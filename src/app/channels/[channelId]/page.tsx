@@ -4,6 +4,7 @@ import ChannelMembers from "@/components/ChannelMembers";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import type { Channel } from "@/types/database";
 import { notFound } from "next/navigation";
+import ChannelHeader from "./channel-header";
 
 async function getChannel(channelId: string) {
 	const { data: channel } = await supabaseAdmin
@@ -15,30 +16,25 @@ async function getChannel(channelId: string) {
 }
 
 interface PageProps {
-	params: {
+	params: Promise<{
 		channelId: string;
-	};
+	}>;
+	searchParams: { [key: string]: string | string[] | undefined };
 }
 
 export default async function ChannelPage({ params }: PageProps) {
-	const channelId = params.channelId;
+	// Await the params object to get the channelId
+	const { channelId } = await params;
 	const channel = await getChannel(channelId);
 	if (!channel) notFound();
 
 	return (
 		<div className="flex h-screen">
 			<div className="flex-1 flex flex-col">
-				<header className="border-b p-4">
-					<h1 className="text-xl font-semibold">#{channel.name}</h1>
-					{channel.description && (
-						<p className="text-sm text-gray-500">{channel.description}</p>
-					)}
-				</header>
-
-				<MessageList channelId={channelId} />
-				<MessageInput channelId={channelId} />
+				<ChannelHeader channel={channel} />
+				<MessageList channelId={channel.id} />
+				<MessageInput channelId={channel.id} />
 			</div>
-			<ChannelMembers channelId={channelId} />
 		</div>
 	);
 }

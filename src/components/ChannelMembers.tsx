@@ -205,19 +205,19 @@ export default function ChannelMembers({ channelId }: { channelId: string }) {
 	console.log("Current members state:", members);
 
 	return (
-		<div className="p-4 border-l border-gray-200 dark:border-gray-800 w-64">
-			<h3 className="text-lg font-semibold mb-4">Members</h3>
-			<ul className="space-y-3">
+		<div className="p-6 h-full overflow-y-auto">
+			<h3 className="text-lg font-semibold mb-6">Channel Members</h3>
+			<ul className="space-y-4">
 				{members.map((member) => (
-					<li key={member.user_id} className="flex items-center gap-2">
+					<li key={member.user_id} className="flex items-center gap-3">
 						{member.user?.avatar_url ? (
 							<img
 								src={member.user.avatar_url}
 								alt={member.user.name}
-								className="w-8 h-8 rounded-full"
+								className="w-9 h-9 rounded-full"
 							/>
 						) : (
-							<div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+							<div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-base">
 								{member.user?.name?.[0] || "?"}
 							</div>
 						)}

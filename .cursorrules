@@ -155,3 +155,9 @@ alter publication supabase_realtime add table channel_invites;
 ## UI Components & Styling
 - **Tailwind CSS**
 - **shadcn/ui**
+
+
+# Notes
+
+In Next.js 15+, dynamic route parameters (like `params` and `searchParams`) are asynchronous.
+You must await the entire `params` object before accessing its properties.
