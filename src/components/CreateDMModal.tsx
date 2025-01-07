@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import { getAuthenticatedSupabaseClient } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
 import { useRouter } from "next/navigation";
+import UserAvatar from "@/components/UserAvatar";
 
 type User = Database["public"]["Tables"]["users"]["Row"];
 type ChannelMember = {
@@ -195,13 +196,7 @@ export default function CreateDMModal({ isOpen, onClose }: CreateDMModalProps) {
 								onClick={() => startDM(user.id)}
 								className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md flex items-center space-x-2"
 							>
-								{user.avatar_url && (
-									<img
-										src={user.avatar_url}
-										alt=""
-										className="w-8 h-8 rounded-full"
-									/>
-								)}
+								<UserAvatar user={user} className="w-8 h-8" />
 								<span>{user.name}</span>
 							</button>
 						))}

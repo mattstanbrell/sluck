@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { getAuthenticatedSupabaseClient } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
@@ -18,6 +18,7 @@ import type {
 	HTMLAttributes,
 } from "react";
 import type { Components } from "react-markdown";
+import type { CodeComponent } from "react-markdown/lib/ast-to-react";
 
 type Message = Database["public"]["Tables"]["messages"]["Row"] & {
 	sender: Database["public"]["Tables"]["users"]["Row"];
@@ -164,6 +165,28 @@ export default function MessageList({
 	const [inviteLink, setInviteLink] = useState<string | null>(null);
 	const [copiedId, setCopiedId] = useState<string | null>(null);
 	const { data: session } = useSession();
+	const messagesEndRef = useRef<HTMLDivElement>(null);
+
+	const scrollToBottom = useCallback(() => {
+		if (messagesEndRef.current) {
+			messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+		}
+	}, []);
+
+	// Initial scroll when messages are loaded
+	useEffect(() => {
+		if (messages.length > 0) {
+			// Immediate scroll on first load
+			messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+		}
+	}, [messages]); // Add messages as dependency
+
+	// Smooth scroll when new messages arrive
+	useEffect(() => {
+		if (messages.length > 0) {
+			scrollToBottom();
+		}
+	}, [messages, scrollToBottom]);
 
 	const copyToClipboard = async (text: string, id: string) => {
 		try {
@@ -397,6 +420,7 @@ export default function MessageList({
 						</div>
 					</div>
 				))}
+				<div ref={messagesEndRef} />
 			</div>
 		</>
 	);
