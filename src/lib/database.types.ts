@@ -87,12 +87,55 @@ export interface Database {
 					invite_policy?: string;
 				};
 			};
+			conversations: {
+				Row: {
+					id: string;
+					created_at: string;
+					updated_at: string;
+					last_message_at: string | null;
+					type: string;
+				};
+				Insert: {
+					id?: string;
+					created_at?: string;
+					updated_at?: string;
+					last_message_at?: string | null;
+					type: string;
+				};
+				Update: {
+					id?: string;
+					created_at?: string;
+					updated_at?: string;
+					last_message_at?: string | null;
+					type?: string;
+				};
+			};
+			conversation_participants: {
+				Row: {
+					conversation_id: string;
+					user_id: string;
+					joined_at: string;
+					last_read_at: string | null;
+				};
+				Insert: {
+					conversation_id: string;
+					user_id: string;
+					joined_at?: string;
+					last_read_at?: string | null;
+				};
+				Update: {
+					conversation_id?: string;
+					user_id?: string;
+					joined_at?: string;
+					last_read_at?: string | null;
+				};
+			};
 			messages: {
 				Row: {
 					id: string;
 					channel_id: string | null;
+					conversation_id: string | null;
 					user_id: string;
-					recipient_id: string | null;
 					content: string;
 					created_at: string;
 					updated_at: string;
@@ -100,8 +143,8 @@ export interface Database {
 				Insert: {
 					id?: string;
 					channel_id?: string | null;
+					conversation_id?: string | null;
 					user_id: string;
-					recipient_id?: string | null;
 					content: string;
 					created_at?: string;
 					updated_at?: string;
@@ -109,8 +152,8 @@ export interface Database {
 				Update: {
 					id?: string;
 					channel_id?: string | null;
+					conversation_id?: string | null;
 					user_id?: string;
-					recipient_id?: string | null;
 					content?: string;
 					created_at?: string;
 					updated_at?: string;

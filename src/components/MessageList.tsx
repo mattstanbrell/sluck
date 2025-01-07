@@ -287,7 +287,7 @@ export default function MessageList({
 						You're the first one here. Invite your teammates to start the
 						conversation.
 					</p>
-					<div className="flex items-center justify-center gap-2 p-3 bg-gray-100 dark:bg-gray-800 rounded-md">
+					<div className="flex items-center justify-center gap-2 p-3 bg-[#F2F0E5] dark:bg-gray-800 rounded-md">
 						<div className="text-sm truncate max-w-[300px]">{inviteLink}</div>
 						<Button variant="ghost" size="sm" onClick={copyInviteLink}>
 							<Copy className="h-4 w-4" />

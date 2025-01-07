@@ -159,11 +159,11 @@ export default function MessageInput({
 		<form onSubmit={sendMessage} className="relative">
 			<div
 				ref={containerRef}
-				className="min-h-[144px] max-h-[50vh] border-t relative"
+				className="min-h-[144px] max-h-[50vh] border-t border-t-[#E0DED2] relative bg-[#F2F0E5]"
 				style={{ height: "144px" }}
 			>
 				<div
-					className="absolute -top-1 left-0 right-0 h-2 cursor-row-resize hover:bg-gray-200 dark:hover:bg-gray-700"
+					className="absolute -top-1 left-0 right-0 h-2 cursor-row-resize hover:bg-[#E0DED2] dark:hover:bg-gray-700"
 					onMouseDown={handleResizeStart}
 				/>
 				<div className="p-4 space-y-2 h-full flex flex-col">
@@ -229,8 +229,9 @@ export default function MessageInput({
 						onChange={(e) => setMessage(e.target.value)}
 						onKeyDown={handleKeyDown}
 						placeholder="Type a message... (Markdown supported)"
-						className="w-full p-2 rounded-md border bg-background hover:border-input focus:border-input dark:border-gray-700 dark:bg-gray-800 resize-none flex-1 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+						className="w-full p-2 rounded-md border border-transparent bg-[#FFFCF0] focus:border-[#1B1A19] dark:border-gray-700 dark:bg-gray-800 resize-none flex-1 focus:outline-none"
 						disabled={isLoading}
+						style={{ height: "144px" }}
 					/>
 				</div>
 			</div>

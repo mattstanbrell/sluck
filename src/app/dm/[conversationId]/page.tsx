@@ -79,7 +79,7 @@ export default function DMPage({
 
 	return (
 		<div className="flex flex-col h-[calc(100vh-3.5rem)] md:h-screen">
-			<div className="border-b p-4 flex items-center space-x-2">
+			<div className="border-b border-b-[#E0DED2] p-4 flex items-center space-x-2">
 				{otherUser.avatar_url && (
 					<img
 						src={otherUser.avatar_url}

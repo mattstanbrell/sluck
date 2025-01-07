@@ -21,7 +21,7 @@ export default function ChannelHeader({ channel }: ChannelHeaderProps) {
 	const [isOpen, setIsOpen] = useState(false);
 
 	return (
-		<header className="border-b p-4 flex items-center justify-between">
+		<header className="border-b border-b-[#E0DED2] p-4 flex items-center justify-between">
 			<div>
 				<h1 className="text-xl font-semibold"># {channel.name}</h1>
 				{channel.description && (
