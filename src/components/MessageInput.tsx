@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { getAuthenticatedSupabaseClient } from "@/lib/supabase";
-import { FormEvent, useState, useRef } from "react";
+import { FormEvent, useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Bold, Italic, List, Code, Link2, Terminal } from "lucide-react";
 
@@ -19,6 +19,46 @@ export default function MessageInput({
 	const [message, setMessage] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const containerRef = useRef<HTMLDivElement>(null);
+	const isResizingRef = useRef(false);
+	const startHeightRef = useRef(0);
+	const startYRef = useRef(0);
+
+	useEffect(() => {
+		const handleMouseMove = (e: MouseEvent) => {
+			if (!isResizingRef.current || !containerRef.current) return;
+
+			const dy = startYRef.current - e.clientY;
+			const newHeight = Math.min(
+				Math.max(startHeightRef.current + dy, 144),
+				window.innerHeight * 0.5,
+			);
+			containerRef.current.style.height = `${newHeight}px`;
+		};
+
+		const handleMouseUp = () => {
+			isResizingRef.current = false;
+			document.documentElement.style.userSelect = "";
+			document.documentElement.style.webkitUserSelect = "";
+		};
+
+		document.addEventListener("mousemove", handleMouseMove);
+		document.addEventListener("mouseup", handleMouseUp);
+
+		return () => {
+			document.removeEventListener("mousemove", handleMouseMove);
+			document.removeEventListener("mouseup", handleMouseUp);
+		};
+	}, []);
+
+	const handleResizeStart = (e: React.MouseEvent) => {
+		if (!containerRef.current) return;
+		isResizingRef.current = true;
+		startHeightRef.current = containerRef.current.offsetHeight;
+		startYRef.current = e.clientY;
+		document.documentElement.style.userSelect = "none";
+		document.documentElement.style.webkitUserSelect = "none";
+	};
 
 	const insertMarkdown = (prefix: string, suffix: string = prefix) => {
 		const textarea = textareaRef.current;
@@ -116,72 +156,84 @@ export default function MessageInput({
 	};
 
 	return (
-		<form onSubmit={sendMessage} className="p-4 border-t space-y-2">
-			<div className="flex gap-1 mb-2">
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					onClick={() => insertMarkdown("**")}
-					title="Bold"
-				>
-					<Bold className="h-4 w-4" />
-				</Button>
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					onClick={() => insertMarkdown("*")}
-					title="Italic"
-				>
-					<Italic className="h-4 w-4" />
-				</Button>
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					onClick={() => insertMarkdown("\n- ")}
-					title="List"
-				>
-					<List className="h-4 w-4" />
-				</Button>
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					onClick={() => insertMarkdown("`", "`")}
-					title="Inline Code"
-				>
-					<Code className="h-4 w-4" />
-				</Button>
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					onClick={insertCodeBlock}
-					title="Code Block"
-				>
-					<Terminal className="h-4 w-4" />
-				</Button>
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					onClick={insertLink}
-					title="Link"
-				>
-					<Link2 className="h-4 w-4" />
-				</Button>
+		<form onSubmit={sendMessage} className="relative">
+			<div
+				ref={containerRef}
+				className="min-h-[144px] max-h-[50vh] border-t relative"
+				style={{ height: "144px" }}
+			>
+				<div
+					className="absolute -top-1 left-0 right-0 h-2 cursor-row-resize hover:bg-gray-200 dark:hover:bg-gray-700"
+					onMouseDown={handleResizeStart}
+				/>
+				<div className="p-4 space-y-2 h-full flex flex-col">
+					<div className="flex gap-1">
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							onClick={() => insertMarkdown("**")}
+							title="Bold"
+						>
+							<Bold className="h-4 w-4" />
+						</Button>
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							onClick={() => insertMarkdown("*")}
+							title="Italic"
+						>
+							<Italic className="h-4 w-4" />
+						</Button>
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							onClick={() => insertMarkdown("\n- ")}
+							title="List"
+						>
+							<List className="h-4 w-4" />
+						</Button>
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							onClick={() => insertMarkdown("`", "`")}
+							title="Inline Code"
+						>
+							<Code className="h-4 w-4" />
+						</Button>
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							onClick={insertCodeBlock}
+							title="Code Block"
+						>
+							<Terminal className="h-4 w-4" />
+						</Button>
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							onClick={insertLink}
+							title="Link"
+						>
+							<Link2 className="h-4 w-4" />
+						</Button>
+					</div>
+					<textarea
+						ref={textareaRef}
+						value={message}
+						onChange={(e) => setMessage(e.target.value)}
+						onKeyDown={handleKeyDown}
+						placeholder="Type a message... (Markdown supported)"
+						className="w-full p-2 rounded-md border bg-background hover:border-input focus:border-input dark:border-gray-700 dark:bg-gray-800 resize-none flex-1 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+						disabled={isLoading}
+					/>
+				</div>
 			</div>
-			<textarea
-				ref={textareaRef}
-				value={message}
-				onChange={(e) => setMessage(e.target.value)}
-				onKeyDown={handleKeyDown}
-				placeholder="Type a message... (Markdown supported)"
-				className="w-full p-2 rounded-md border bg-background hover:border-input focus:border-input dark:border-gray-700 dark:bg-gray-800 min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-				disabled={isLoading}
-			/>
 		</form>
 	);
 }
