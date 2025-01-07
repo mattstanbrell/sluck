@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
@@ -16,16 +16,18 @@ export async function getAuthenticatedSupabaseClient() {
 	const response = await fetch("/api/auth/session");
 	const session = await response.json();
 
-	if (!session) {
+	if (
+		!session?.supabaseAccessToken ||
+		typeof session.supabaseAccessToken !== "string"
+	) {
 		return supabase;
 	}
 
-	// Create a new Supabase client with the session token
-	return createClient(supabaseUrl, supabaseAnonKey, {
-		global: {
-			headers: {
-				Authorization: `Bearer ${session.supabaseAccessToken}`,
-			},
+	// Create a new Supabase client with the service role token
+	return createClient(supabaseUrl, session.supabaseAccessToken, {
+		auth: {
+			autoRefreshToken: false,
+			persistSession: false,
 		},
 	});
 }

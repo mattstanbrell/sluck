@@ -1,8 +1,8 @@
 "use client";
 
 import { signOut, useSession } from "next-auth/react";
-import { supabase } from "@/lib/supabase";
-import { Channel } from "@/types/database";
+import { supabase, getAuthenticatedSupabaseClient } from "@/lib/supabase";
+import type { Channel } from "@/types/database";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import CreateChannelModal from "./CreateChannelModal";
@@ -38,7 +38,8 @@ export default function Sidebar() {
 	}, []);
 
 	const fetchChannels = async () => {
-		const { data } = await supabase
+		const client = await getAuthenticatedSupabaseClient();
+		const { data } = await client
 			.from("channels")
 			.select("*")
 			.order("created_at");
@@ -60,6 +61,7 @@ export default function Sidebar() {
 							Channels
 						</h2>
 						<button
+							type="button"
 							onClick={() => setIsModalOpen(true)}
 							className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
 						>
@@ -95,6 +97,7 @@ export default function Sidebar() {
 						<span className="text-sm font-medium">{session.user?.name}</span>
 					</div>
 					<button
+						type="button"
 						onClick={() => signOut()}
 						className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
 					>

@@ -1,6 +1,6 @@
 "use client";
 
-import { supabase } from "@/lib/supabase";
+import { supabase, getAuthenticatedSupabaseClient } from "@/lib/supabase";
 import { useSession } from "next-auth/react";
 import { FormEvent, useState } from "react";
 
@@ -26,6 +26,7 @@ export default function CreateChannelModal({
 
 		try {
 			setIsLoading(true);
+			const client = await getAuthenticatedSupabaseClient();
 
 			console.log("Attempting to create channel with:", {
 				name: name.trim().toLowerCase().replace(/\s+/g, "-"),
@@ -33,7 +34,7 @@ export default function CreateChannelModal({
 				created_by: session.user.id,
 			});
 
-			const { data, error } = await supabase.from("channels").insert({
+			const { data, error } = await client.from("channels").insert({
 				name: name.trim().toLowerCase().replace(/\s+/g, "-"),
 				description: description.trim(),
 				created_by: session.user.id,
@@ -69,10 +70,14 @@ export default function CreateChannelModal({
 				<form onSubmit={handleSubmit}>
 					<div className="space-y-4">
 						<div>
-							<label className="block text-sm font-medium mb-1">
+							<label
+								htmlFor="channel-name"
+								className="block text-sm font-medium mb-1"
+							>
 								Channel name
 							</label>
 							<input
+								id="channel-name"
 								type="text"
 								value={name}
 								onChange={(e) => setName(e.target.value)}
@@ -83,10 +88,14 @@ export default function CreateChannelModal({
 							/>
 						</div>
 						<div>
-							<label className="block text-sm font-medium mb-1">
+							<label
+								htmlFor="channel-description"
+								className="block text-sm font-medium mb-1"
+							>
 								Description <span className="text-gray-500">(optional)</span>
 							</label>
 							<input
+								id="channel-description"
 								type="text"
 								value={description}
 								onChange={(e) => setDescription(e.target.value)}
