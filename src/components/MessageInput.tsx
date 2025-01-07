@@ -42,7 +42,32 @@ export default function MessageInput({
 	};
 
 	const insertCodeBlock = () => {
-		insertMarkdown("\n```\n", "\n```\n");
+		const textarea = textareaRef.current;
+		if (!textarea) return;
+
+		const start = textarea.selectionStart;
+		const end = textarea.selectionEnd;
+		const text = textarea.value;
+		const before = text.substring(0, start);
+		const selection = text.substring(start, end);
+		const after = text.substring(end);
+
+		// Only add newlines if we're in the middle of text
+		const needsNewlineBefore = before.length > 0 && !before.endsWith("\n");
+		const needsNewlineAfter = after.length > 0 && !after.startsWith("\n");
+
+		const prefix = needsNewlineBefore ? "\n```\n" : "```\n";
+		const suffix = needsNewlineAfter ? "\n```\n" : "\n```";
+
+		const newText = before + prefix + selection + suffix + after;
+		setMessage(newText);
+
+		// Force React to update the textarea value
+		setTimeout(() => {
+			textarea.focus();
+			const newCursorPos = start + prefix.length;
+			textarea.setSelectionRange(newCursorPos, newCursorPos + selection.length);
+		}, 0);
 	};
 
 	const insertLink = () => {
