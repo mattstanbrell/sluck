@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import CreateChannelModal from "./CreateChannelModal";
 import type { Database } from "@/lib/database.types";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 type Channel = Database["public"]["Tables"]["channels"]["Row"];
 type ChannelMember = Database["public"]["Tables"]["channel_members"]["Row"] & {
@@ -16,6 +18,7 @@ export default function Sidebar() {
 	const { data: session } = useSession();
 	const [channels, setChannels] = useState<Channel[]>([]);
 	const [isModalOpen, setIsModalOpen] = useState(false);
+	const pathname = usePathname();
 
 	useEffect(() => {
 		let subscription: ReturnType<typeof supabase.channel> | null = null;
@@ -96,16 +99,24 @@ export default function Sidebar() {
 						</button>
 					</div>
 					<ul className="space-y-1">
-						{channels?.map((channel) => (
-							<li key={channel.id}>
-								<Link
-									href={`/channels/${channel.id}`}
-									className="block px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-800"
-								>
-									# {channel.name}
-								</Link>
-							</li>
-						))}
+						{channels?.map((channel) => {
+							const isActive = pathname === `/channels/${channel.id}`;
+							return (
+								<li key={channel.id}>
+									<Link
+										href={`/channels/${channel.id}`}
+										className={cn(
+											"block px-2 py-1 rounded transition-colors",
+											isActive
+												? "bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+												: "hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300",
+										)}
+									>
+										# {channel.name}
+									</Link>
+								</li>
+							);
+						})}
 					</ul>
 				</div>
 			</div>
