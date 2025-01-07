@@ -1,5 +1,12 @@
 "use client";
 
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogFooter,
+} from "@/components/ui/dialog";
 import { getAuthenticatedSupabaseClient } from "@/lib/supabase";
 import { useSession } from "next-auth/react";
 import { FormEvent, useState } from "react";
@@ -21,8 +28,6 @@ export default function CreateChannelModal({
 	const [isLoading, setIsLoading] = useState(false);
 	const { data: session } = useSession();
 	const router = useRouter();
-
-	if (!isOpen) return null;
 
 	const handleSubmit = async (e: FormEvent) => {
 		e.preventDefault();
@@ -70,9 +75,11 @@ export default function CreateChannelModal({
 	};
 
 	return (
-		<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-			<div className="bg-white dark:bg-gray-800 p-6 rounded-lg w-full max-w-md">
-				<h2 className="text-xl font-semibold mb-4">Create a channel</h2>
+		<Dialog open={isOpen} onOpenChange={onClose}>
+			<DialogContent className="bg-[#F2F0E5] dark:bg-gray-800">
+				<DialogHeader>
+					<DialogTitle className="text-2xl">Create a channel</DialogTitle>
+				</DialogHeader>
 				<form onSubmit={handleSubmit}>
 					<div className="space-y-4">
 						<div>
@@ -87,7 +94,7 @@ export default function CreateChannelModal({
 								type="text"
 								value={name}
 								onChange={(e) => setName(e.target.value)}
-								className="w-full p-2 rounded-md border dark:border-gray-700 dark:bg-gray-900"
+								className="w-full p-2 rounded-md border border-transparent bg-[#FFFCF0] focus:border-[#1B1A19] dark:border-gray-700 dark:bg-gray-800 focus:outline-none"
 								placeholder="e.g. team-updates"
 								required
 								disabled={isLoading}
@@ -105,31 +112,23 @@ export default function CreateChannelModal({
 								type="text"
 								value={description}
 								onChange={(e) => setDescription(e.target.value)}
-								className="w-full p-2 rounded-md border dark:border-gray-700 dark:bg-gray-900"
+								className="w-full p-2 rounded-md border border-transparent bg-[#FFFCF0] focus:border-[#1B1A19] dark:border-gray-700 dark:bg-gray-800 focus:outline-none"
 								placeholder="What's this channel about?"
 								disabled={isLoading}
 							/>
 						</div>
-						<div className="flex justify-end space-x-2">
-							<button
-								type="button"
-								onClick={onClose}
-								className="px-4 py-2 text-sm rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
-								disabled={isLoading}
-							>
-								Cancel
-							</button>
+						<DialogFooter>
 							<button
 								type="submit"
-								className="px-4 py-2 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+								className="px-4 py-2 text-sm rounded-md text-[#3D7970] bg-[#E4EDEC] border border-[#59A097] hover:bg-[#D4E2E0] disabled:opacity-50 disabled:cursor-not-allowed"
 								disabled={isLoading}
 							>
-								{isLoading ? "Creating..." : "Create Channel"}
+								{isLoading ? "Creating..." : "Create"}
 							</button>
-						</div>
+						</DialogFooter>
 					</div>
 				</form>
-			</div>
-		</div>
+			</DialogContent>
+		</Dialog>
 	);
 }
