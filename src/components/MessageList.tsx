@@ -1,16 +1,19 @@
 "use client";
 
-import { supabase } from "@/lib/supabase";
-import { Message, User } from "@/types/database";
+import { supabase, getAuthenticatedSupabaseClient } from "@/lib/supabase";
+import type { Message, User } from "@/types/database";
 import { useEffect, useState } from "react";
 
 export default function MessageList({ channelId }: { channelId: string }) {
 	const [messages, setMessages] = useState<(Message & { user: User })[]>([]);
 
 	useEffect(() => {
-		// Initial fetch
-		const fetchMessages = async () => {
-			const { data } = await supabase
+		let subscription: ReturnType<typeof supabase.channel> | null = null;
+
+		const setupMessaging = async () => {
+			// Initial fetch
+			const client = await getAuthenticatedSupabaseClient();
+			const { data } = await client
 				.from("messages")
 				.select(`
           *,
@@ -20,50 +23,50 @@ export default function MessageList({ channelId }: { channelId: string }) {
 				.order("created_at", { ascending: true });
 
 			if (data) setMessages(data as (Message & { user: User })[]);
+
+			// Set up real-time subscription
+			subscription = client
+				.channel(`messages:${channelId}`)
+				.on(
+					"postgres_changes",
+					{
+						event: "*",
+						schema: "public",
+						table: "messages",
+						filter: `channel_id=eq.${channelId}`,
+					},
+					async (payload) => {
+						if (payload.eventType === "INSERT") {
+							const { data: userData } = await client
+								.from("users")
+								.select("*")
+								.eq("id", payload.new.user_id)
+								.single();
+
+							setMessages((current) => [
+								...current,
+								{ ...payload.new, user: userData } as Message & { user: User },
+							]);
+						} else if (payload.eventType === "UPDATE") {
+							setMessages((current) =>
+								current.map((msg) =>
+									msg.id === payload.new.id ? { ...msg, ...payload.new } : msg,
+								),
+							);
+						} else if (payload.eventType === "DELETE") {
+							setMessages((current) =>
+								current.filter((msg) => msg.id !== payload.old.id),
+							);
+						}
+					},
+				)
+				.subscribe();
 		};
 
-		fetchMessages();
-
-		// Set up real-time subscription
-		const subscription = supabase
-			.channel(`messages:${channelId}`)
-			.on(
-				"postgres_changes",
-				{
-					event: "*",
-					schema: "public",
-					table: "messages",
-					filter: `channel_id=eq.${channelId}`,
-				},
-				async (payload) => {
-					if (payload.eventType === "INSERT") {
-						const { data: userData } = await supabase
-							.from("users")
-							.select("*")
-							.eq("id", payload.new.user_id)
-							.single();
-
-						setMessages((current) => [
-							...current,
-							{ ...payload.new, user: userData } as Message & { user: User },
-						]);
-					} else if (payload.eventType === "UPDATE") {
-						setMessages((current) =>
-							current.map((msg) =>
-								msg.id === payload.new.id ? { ...msg, ...payload.new } : msg,
-							),
-						);
-					} else if (payload.eventType === "DELETE") {
-						setMessages((current) =>
-							current.filter((msg) => msg.id !== payload.old.id),
-						);
-					}
-				},
-			)
-			.subscribe();
+		setupMessaging();
 
 		return () => {
-			subscription.unsubscribe();
+			subscription?.unsubscribe();
 		};
 	}, [channelId]);
 

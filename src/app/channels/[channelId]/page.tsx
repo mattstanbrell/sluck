@@ -1,11 +1,11 @@
 import MessageList from "@/components/MessageList";
 import MessageInput from "@/components/MessageInput";
-import { supabase } from "@/lib/supabase";
-import { Channel } from "@/types/database";
+import { supabaseAdmin } from "@/lib/supabase-admin";
+import type { Channel } from "@/types/database";
 import { notFound } from "next/navigation";
 
 async function getChannel(channelId: string) {
-	const { data: channel } = await supabase
+	const { data: channel } = await supabaseAdmin
 		.from("channels")
 		.select("*")
 		.eq("id", channelId)

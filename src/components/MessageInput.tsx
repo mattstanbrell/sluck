@@ -1,24 +1,33 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { supabase } from "@/lib/supabase";
+import { getAuthenticatedSupabaseClient } from "@/lib/supabase";
 import { FormEvent, useState } from "react";
 
 export default function MessageInput({ channelId }: { channelId: string }) {
 	const { data: session } = useSession();
 	const [message, setMessage] = useState("");
+	const [isLoading, setIsLoading] = useState(false);
 
 	const sendMessage = async (e: FormEvent) => {
 		e.preventDefault();
-		if (!message.trim() || !session?.user?.id) return;
+		if (!message.trim() || !session?.user?.id || isLoading) return;
 
-		await supabase.from("messages").insert({
-			content: message,
-			channel_id: channelId,
-			user_id: session.user.id,
-		});
+		try {
+			setIsLoading(true);
+			const client = await getAuthenticatedSupabaseClient();
+			await client.from("messages").insert({
+				content: message.trim(),
+				channel_id: channelId,
+				user_id: session.user.id,
+			});
 
-		setMessage("");
+			setMessage("");
+		} catch (error) {
+			console.error("Error sending message:", error);
+		} finally {
+			setIsLoading(false);
+		}
 	};
 
 	return (
@@ -29,6 +38,7 @@ export default function MessageInput({ channelId }: { channelId: string }) {
 				onChange={(e) => setMessage(e.target.value)}
 				placeholder="Type a message..."
 				className="w-full p-2 rounded-md border dark:border-gray-700 dark:bg-gray-800"
+				disabled={isLoading}
 			/>
 		</form>
 	);
