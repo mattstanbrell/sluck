@@ -166,40 +166,42 @@ export default function ChannelMembers({ channelId }: { channelId: string }) {
 	return (
 		<div className="p-6 h-full overflow-y-auto">
 			<DialogTitle className="sr-only">Channel Info</DialogTitle>
-			{isAdmin && inviteLink && (
-				<div className="mb-8">
-					<h3 className="text-lg font-semibold mb-4">Invite Link</h3>
-					<div className="flex items-center gap-2 p-2 bg-[#F2F0E5] dark:bg-gray-800 rounded-md">
-						<div className="flex-1 truncate text-sm">{inviteLink}</div>
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={copyInviteLink}
-							className="shrink-0"
-						>
-							<Copy className="h-4 w-4" />
-						</Button>
+			<div className="mt-8">
+				{isAdmin && inviteLink && (
+					<div className="mb-8">
+						<h3 className="text-lg font-semibold mb-4">Invite Link</h3>
+						<div className="flex items-center gap-2 p-2 bg-[#F2F0E5] dark:bg-gray-800 rounded-md">
+							<div className="flex-1 truncate text-sm">{inviteLink}</div>
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={copyInviteLink}
+								className="shrink-0"
+							>
+								<Copy className="h-4 w-4" />
+							</Button>
+						</div>
 					</div>
-				</div>
-			)}
+				)}
 
-			<div>
-				<h3 className="text-lg font-semibold mb-6">Channel Members</h3>
-				<ul className="space-y-4">
-					{members.map((member) => (
-						<li key={member.user_id} className="flex items-center gap-3">
-							<UserAvatar user={member.user} className="w-9 h-9" />
-							<div>
-								<div className="font-medium">
-									{member.user?.name || "Unknown User"}
+				<div>
+					<h3 className="text-lg font-semibold mb-6">Channel Members</h3>
+					<ul className="space-y-4">
+						{members.map((member) => (
+							<li key={member.user_id} className="flex items-center gap-3">
+								<UserAvatar user={member.user} className="w-9 h-9" />
+								<div>
+									<div className="font-medium">
+										{member.user?.name || "Unknown User"}
+									</div>
+									<div className="text-xs text-gray-500 capitalize">
+										{member.role}
+									</div>
 								</div>
-								<div className="text-xs text-gray-500 capitalize">
-									{member.role}
-								</div>
-							</div>
-						</li>
-					))}
-				</ul>
+							</li>
+						))}
+					</ul>
+				</div>
 			</div>
 		</div>
 	);
