@@ -88,20 +88,42 @@ create table channel_members (
 );
 ```
 
+## Conversations table
+```sql
+create table conversations (
+  id uuid primary key default uuid_generate_v4(),
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  last_message_at timestamptz,
+  type text not null check (type in ('direct', 'group')) default 'direct'
+);
+```
+
+## Conversation participants table
+```sql
+create table conversation_participants (
+  conversation_id uuid references conversations(id) on delete cascade,
+  user_id uuid references users(id) on delete cascade,
+  joined_at timestamptz default now(),
+  last_read_at timestamptz,
+  primary key (conversation_id, user_id)
+);
+```
+
 ## Messages table
 ```sql
 create table messages (
   id uuid primary key default uuid_generate_v4(),
+  conversation_id uuid references conversations(id) on delete cascade,
   channel_id uuid references channels(id) on delete cascade,
   user_id uuid references users(id) on delete cascade,
-  recipient_id uuid references users(id) on delete cascade, -- For DMs only
   content text not null,
   created_at timestamptz default now(),
   updated_at timestamptz default now(),
-  -- recipient_id is only used for DMs, channel_id only for channels
-  constraint message_type_check check (
-    (channel_id is null and recipient_id is not null) or
-    (channel_id is not null and recipient_id is null)
+  -- messages must belong to either a conversation or channel
+  constraint message_container_check check (
+    (conversation_id is null and channel_id is not null) or
+    (conversation_id is not null and channel_id is null)
   )
 );
 ```
@@ -127,6 +149,8 @@ alter table channels enable row level security;
 alter table messages enable row level security;
 alter table channel_members enable row level security;
 alter table channel_invites enable row level security;
+alter table conversations enable row level security;
+alter table conversation_participants enable row level security;
 ```
 
 ## Enable Realtime
@@ -134,6 +158,8 @@ alter table channel_invites enable row level security;
 alter publication supabase_realtime add table channels;
 alter publication supabase_realtime add table messages;
 alter publication supabase_realtime add table channel_invites;
+alter publication supabase_realtime add table conversations;
+alter publication supabase_realtime add table conversation_participants;
 ```
 
 
@@ -161,3 +187,5 @@ alter publication supabase_realtime add table channel_invites;
 
 In Next.js 15+, dynamic route parameters (like `params` and `searchParams`) are asynchronous.
 You must await the entire `params` object before accessing its properties.
+
+Use `npx shadcn@latest` not `npx shadcn-ui@latest`.

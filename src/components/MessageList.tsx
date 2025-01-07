@@ -7,34 +7,65 @@ import type {
 	RealtimeChannel,
 	RealtimePostgresChangesPayload,
 } from "@supabase/supabase-js";
+import { useSession } from "next-auth/react";
 
 type Message = Database["public"]["Tables"]["messages"]["Row"];
 type User = Database["public"]["Tables"]["users"]["Row"];
 
-export default function MessageList({ channelId }: { channelId: string }) {
+interface MessageListProps {
+	channelId?: string | null;
+	conversationId?: string | null;
+	className?: string;
+}
+
+export default function MessageList({
+	channelId,
+	conversationId,
+	className = "",
+}: MessageListProps) {
+	const { data: session } = useSession();
 	const [messages, setMessages] = useState<(Message & { user: User })[]>([]);
 
 	useEffect(() => {
 		let subscription: RealtimeChannel | null = null;
 
 		const setupMessaging = async () => {
-			// Initial fetch from API
-			const response = await fetch(`/api/messages?channelId=${channelId}`);
-			if (!response.ok) return;
-			const data = await response.json();
-			setMessages(data);
+			if (!session?.user?.id) return;
 
-			// Set up real-time subscription with authenticated client
 			const client = await getAuthenticatedSupabaseClient();
+
+			// Initial fetch
+			const { data } = await client
+				.from("messages")
+				.select(`
+					*,
+					user:users!messages_user_id_fkey(*)
+				`)
+				.eq(
+					channelId ? "channel_id" : "conversation_id",
+					channelId || conversationId,
+				)
+				.order("created_at", { ascending: true });
+
+			if (data) {
+				setMessages(data);
+			}
+
+			// Set up real-time subscription
+			const channel = channelId
+				? `messages:${channelId}`
+				: `conversation:${conversationId}`;
 			subscription = client
-				.channel(`messages:${channelId}`)
+				.channel(channel)
 				.on(
 					"postgres_changes",
 					{
 						event: "*",
 						schema: "public",
 						table: "messages",
-						filter: `channel_id=eq.${channelId}`,
+						filter: channelId
+							? `channel_id=eq.${channelId}`
+							: `conversation_id=eq.${conversationId}`,
 					},
 					async (payload: RealtimePostgresChangesPayload<Message>) => {
 						console.log("Received message update:", payload);
@@ -71,7 +102,7 @@ export default function MessageList({ channelId }: { channelId: string }) {
 					console.log("Subscription status:", status);
 				});
 
-			console.log("Subscription set up for channel:", channelId);
+			console.log("Subscription set up for:", channel);
 		};
 
 		setupMessaging();
@@ -80,10 +111,10 @@ export default function MessageList({ channelId }: { channelId: string }) {
 			console.log("Cleaning up subscription");
 			subscription?.unsubscribe();
 		};
-	}, [channelId]);
+	}, [channelId, conversationId, session?.user?.id]);
 
 	return (
-		<div className="flex-1 overflow-y-auto p-4 space-y-4">
+		<div className={`flex-1 overflow-y-auto p-4 space-y-4 ${className}`}>
 			{messages.map((message) => (
 				<div key={message.id} className="flex items-start space-x-3">
 					{message.user?.avatar_url && (

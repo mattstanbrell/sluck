@@ -4,7 +4,15 @@ import { useSession } from "next-auth/react";
 import { getAuthenticatedSupabaseClient } from "@/lib/supabase";
 import { FormEvent, useState } from "react";
 
-export default function MessageInput({ channelId }: { channelId: string }) {
+interface MessageInputProps {
+	channelId?: string | null;
+	conversationId?: string | null;
+}
+
+export default function MessageInput({
+	channelId,
+	conversationId,
+}: MessageInputProps) {
 	const { data: session } = useSession();
 	const [message, setMessage] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
@@ -16,11 +24,24 @@ export default function MessageInput({ channelId }: { channelId: string }) {
 		try {
 			setIsLoading(true);
 			const client = await getAuthenticatedSupabaseClient();
+
+			// Insert the message
 			await client.from("messages").insert({
 				content: message.trim(),
 				channel_id: channelId,
+				conversation_id: conversationId,
 				user_id: session.user.id,
 			});
+
+			// Update the conversation's last_message_at
+			if (conversationId) {
+				await client
+					.from("conversations")
+					.update({
+						last_message_at: new Date().toISOString(),
+					})
+					.eq("id", conversationId);
+			}
 
 			setMessage("");
 		} catch (error) {
