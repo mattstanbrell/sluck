@@ -16,6 +16,7 @@ import {
 	SheetTrigger,
 	SheetClose,
 } from "@/components/ui/sheet";
+import UserAvatar from "./UserAvatar";
 
 type Channel = Database["public"]["Tables"]["channels"]["Row"];
 type ChannelMember = Database["public"]["Tables"]["channel_members"]["Row"] & {
@@ -91,7 +92,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 						event: "*",
 						schema: "public",
 						table: "messages",
-						filter: session?.user?.id ? `conversation_id.neq.null` : undefined,
+						filter: session?.user?.id ? "conversation_id.neq.null" : undefined,
 					},
 					() => {
 						fetchConversations();
@@ -266,19 +267,10 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 												: "hover:bg-gray-200 dark:hover:bg-gray-800",
 										)}
 									>
-										{conversation.otherUser.avatar_url ? (
-											<img
-												src={conversation.otherUser.avatar_url}
-												alt=""
-												className="w-6 h-6 rounded-full flex-shrink-0"
-											/>
-										) : (
-											<div className="w-6 h-6 rounded-full bg-gray-300 dark:bg-gray-700 flex-shrink-0 flex items-center justify-center">
-												<span className="text-sm text-gray-600 dark:text-gray-400">
-													{conversation.otherUser.name.charAt(0)}
-												</span>
-											</div>
-										)}
+										<UserAvatar
+											user={conversation.otherUser}
+											className="w-6 h-6"
+										/>
 										<span className="truncate">
 											{conversation.otherUser.name}
 										</span>
@@ -295,13 +287,14 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 				</div>
 			</div>
 
-			<div className="mt-auto pt-4">
+			<div className="mt-auto flex items-center gap-2">
+				<UserAvatar user={session.user} className="w-8 h-8" />
 				<button
 					type="button"
 					onClick={() => signOut()}
-					className="w-full px-2 py-1 text-left text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-800 rounded"
+					className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
 				>
-					Sign out
+					Sign Out
 				</button>
 			</div>
 

@@ -3,9 +3,9 @@
 	"version": "0.1.0",
 	"private": true,
 	"scripts": {
-		"dev": "next dev --turbopack",
-		"build": "next build",
-		"start": "next start",
+		"dev": "NODE_OPTIONS='--no-deprecation=DEP0040' next dev --turbopack",
+		"build": "NODE_OPTIONS='--no-deprecation=DEP0040' next build",
+		"start": "NODE_OPTIONS='--no-deprecation=DEP0040' next start",
 		"lint": "next lint"
 	},
 	"dependencies": {
@@ -21,12 +21,17 @@
 		"next-auth": "^5.0.0-beta.25",
 		"react": "^19.0.0",
 		"react-dom": "^19.0.0",
+		"react-markdown": "^9.0.3",
+		"rehype-highlight": "^7.0.1",
+		"rehype-raw": "^7.0.0",
+		"remark-gfm": "^4.0.0",
 		"shadcn-ui": "^0.9.4",
 		"tailwind-merge": "^2.6.0",
 		"tailwindcss-animate": "^1.0.7"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "1.9.4",
+		"@tailwindcss/typography": "^0.5.16",
 		"@types/node": "^20",
 		"@types/react": "^19",
 		"@types/react-dom": "^19",

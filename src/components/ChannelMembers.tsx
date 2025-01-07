@@ -6,6 +6,7 @@ import type { User } from "@/types/database";
 import { useSession } from "next-auth/react";
 import { Button } from "./ui/button";
 import { Copy, Plus } from "lucide-react";
+import UserAvatar from "./UserAvatar";
 
 type Member = {
 	user_id: string;
@@ -294,17 +295,7 @@ export default function ChannelMembers({ channelId }: { channelId: string }) {
 			<ul className="space-y-4">
 				{members.map((member) => (
 					<li key={member.user_id} className="flex items-center gap-3">
-						{member.user?.avatar_url ? (
-							<img
-								src={member.user.avatar_url}
-								alt={member.user.name}
-								className="w-9 h-9 rounded-full"
-							/>
-						) : (
-							<div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-base">
-								{member.user?.name?.[0] || "?"}
-							</div>
-						)}
+						<UserAvatar user={member.user} className="w-9 h-9" />
 						<div>
 							<div className="font-medium">
 								{member.user?.name || "Unknown User"}
