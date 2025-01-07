@@ -55,282 +55,117 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 	const pathname = usePathname();
 
 	useEffect(() => {
-		console.log("Sidebar useEffect triggered with session:", {
-			userId: session?.user?.id,
-			email: session?.user?.email,
-		});
-
 		let channelSubscription: ReturnType<typeof supabase.channel> | null = null;
 		let conversationSubscription: ReturnType<typeof supabase.channel> | null =
 			null;
 
 		const setupSubscriptions = async () => {
-			try {
-				console.log("Setting up subscriptions for user:", session?.user?.id);
+			// Initial fetch
+			await Promise.all([fetchChannels(), fetchConversations()]);
 
-				// Initial fetch
-				try {
-					console.log("Starting initial data fetch...");
-					await Promise.all([fetchChannels(), fetchConversations()]);
-					console.log("Initial data fetch completed");
-				} catch (error) {
-					console.error("Error during initial data fetch:", error);
-				}
+			// Set up real-time subscription for channels
+			const client = await getAuthenticatedSupabaseClient();
+			channelSubscription = client
+				.channel("channels")
+				.on(
+					"postgres_changes",
+					{
+						event: "*",
+						schema: "public",
+						table: "channel_members",
+						filter: session?.user?.id
+							? `user_id=eq.${session.user.id}`
+							: undefined,
+					},
+					() => {
+						fetchChannels();
+					},
+				)
+				.subscribe();
 
-				// Set up real-time subscription for channels
-				try {
-					const client = await getAuthenticatedSupabaseClient();
-					console.log("Setting up channel subscription");
-
-					channelSubscription = client
-						?.channel(`channels-${session?.user?.id}`)
-						.on(
-							"postgres_changes",
-							{
-								event: "*",
-								schema: "public",
-								table: "channel_members",
-								filter: session?.user?.id
-									? `user_id=eq.${session.user.id}`
-									: undefined,
-							},
-							(payload) => {
-								console.log("Received channel update:", payload);
-								fetchChannels();
-							},
-						)
-						.subscribe((status) => {
-							console.log("Channel subscription status:", status);
-						});
-
-					// Set up real-time subscription for conversations
-					conversationSubscription = client
-						?.channel(`conversations-${session?.user?.id}`)
-						.on(
-							"postgres_changes",
-							{
-								event: "*",
-								schema: "public",
-								table: "messages",
-								filter: session?.user?.id
-									? "conversation_id.neq.null"
-									: undefined,
-							},
-							(payload) => {
-								console.log("Received conversation update:", payload);
-								fetchConversations();
-							},
-						)
-						.subscribe((status) => {
-							console.log("Conversation subscription status:", status);
-						});
-				} catch (error) {
-					console.error("Error setting up realtime subscriptions:", error);
-				}
-			} catch (error) {
-				console.error("Error in setupSubscriptions:", error);
-			}
+			// Set up real-time subscription for conversations
+			conversationSubscription = client
+				.channel("conversations")
+				.on(
+					"postgres_changes",
+					{
+						event: "*",
+						schema: "public",
+						table: "messages",
+						filter: session?.user?.id ? "conversation_id.neq.null" : undefined,
+					},
+					() => {
+						fetchConversations();
+					},
+				)
+				.subscribe();
 		};
 
 		if (session?.user?.id) {
-			console.log("User session found, calling setupSubscriptions");
 			setupSubscriptions();
-		} else {
-			console.log("No user session found, skipping setupSubscriptions");
 		}
 
 		return () => {
-			console.log("Cleaning up subscriptions");
-			if (channelSubscription) {
-				console.log("Unsubscribing from channel subscription");
-				channelSubscription.unsubscribe();
-			}
-			if (conversationSubscription) {
-				console.log("Unsubscribing from conversation subscription");
-				conversationSubscription.unsubscribe();
-			}
+			channelSubscription?.unsubscribe();
+			conversationSubscription?.unsubscribe();
 		};
 	}, [session?.user?.id]);
 
 	const fetchChannels = async () => {
-		if (!session?.user?.id) {
-			console.log("No user session, skipping channel fetch");
-			return;
-		}
+		if (!session?.user?.id) return;
 
-		try {
-			console.log("Fetching channels for user:", session.user.id);
-			const client = await getAuthenticatedSupabaseClient();
-			if (!client) {
-				console.error("Failed to get authenticated client");
-				return;
-			}
+		const client = await getAuthenticatedSupabaseClient();
+		const { data } = await client
+			.from("channel_members")
+			.select("*, channel:channels(*)")
+			.eq("user_id", session.user.id)
+			.order("joined_at");
 
-			console.log("Executing channel query...");
-			const { data, error, status, statusText } = await client
-				.from("channel_members")
-				.select("*, channel:channels(*)")
-				.eq("user_id", session.user.id)
-				.order("joined_at");
-
-			console.log("Channel query response:", {
-				status,
-				statusText,
-				error: error
-					? {
-							message: error.message,
-							details: error.details,
-							hint: error.hint,
-							code: error.code,
-						}
-					: null,
-			});
-
-			if (error) {
-				console.error("Error fetching channels:", {
-					message: error.message,
-					details: error.details,
-					hint: error.hint,
-					code: error.code,
-				});
-				return;
-			}
-
-			if (!data) {
-				console.log("No channel data received");
-				return;
-			}
-
-			console.log("Raw channel_members data:", JSON.stringify(data, null, 2));
-			console.log("Number of channel_members records:", data.length);
-
+		if (data) {
 			const channelData = (data as ChannelMember[])
-				.map((item) => {
-					if (!item.channel) {
-						console.log(
-							"Skipping channel member - no channel data:",
-							JSON.stringify(item, null, 2),
-						);
-						return null;
-					}
-					return item.channel;
-				})
+				.map((item) => item.channel)
 				.filter((channel): channel is Channel => channel !== null);
-
-			console.log("Processed channels:", JSON.stringify(channelData, null, 2));
-			console.log("Number of valid channels:", channelData.length);
-			console.log(
-				"Setting channels state with:",
-				JSON.stringify(channelData, null, 2),
-			);
 			setChannels(channelData);
-			console.log("Current channels state after update:", channels);
-		} catch (error) {
-			console.error("Unexpected error in fetchChannels:", error);
 		}
 	};
 
 	const fetchConversations = async () => {
-		if (!session?.user?.id) {
-			console.log("No user session, skipping conversation fetch");
-			return;
-		}
+		if (!session?.user?.id) return;
 
-		try {
-			console.log("Fetching conversations for user:", session.user.id);
-			const client = await getAuthenticatedSupabaseClient();
-			if (!client) {
-				console.error("Failed to get authenticated client");
-				return;
-			}
-
-			console.log("Executing conversation query...");
-			const {
-				data: userConversations,
-				error,
-				status,
-				statusText,
-			} = await client
-				.from("conversation_participants")
-				.select(`
-					conversation:conversations!inner(
+		const client = await getAuthenticatedSupabaseClient();
+		const { data: userConversations } = await client
+			.from("conversation_participants")
+			.select(`
+				conversation:conversations!inner(
+					id,
+					type,
+					last_message_at,
+					participants:conversation_participants(
+						user:users(*)
+					),
+					messages:messages!messages_conversation_id_fkey(
 						id,
-						type,
-						last_message_at,
-						participants:conversation_participants(
-							user:users(*)
-						),
-						messages:messages!messages_conversation_id_fkey(
-							id,
-							content,
-							created_at,
-							sender:users!messages_user_id_fkey(*)
-						)
+						content,
+						created_at,
+						sender:users!messages_user_id_fkey(*)
 					)
-				`)
-				.eq("user_id", session.user.id)
-				.eq("conversations.type", "direct")
-				.order("conversation(last_message_at)", { ascending: false });
+				)
+			`)
+			.eq("user_id", session.user.id)
+			.eq("conversations.type", "direct")
+			.order("conversation(last_message_at)", { ascending: false });
 
-			console.log("Conversation query response:", {
-				status,
-				statusText,
-				error: error
-					? {
-							message: error.message,
-							details: error.details,
-							hint: error.hint,
-							code: error.code,
-						}
-					: null,
-			});
-
-			if (error) {
-				console.error("Error fetching conversations:", {
-					message: error.message,
-					details: error.details,
-					hint: error.hint,
-					code: error.code,
-				});
-				return;
-			}
-
-			if (!userConversations) {
-				console.log("No conversation data received");
-				return;
-			}
-
-			console.log(
-				"Raw conversation data:",
-				JSON.stringify(userConversations, null, 2),
-			);
-			console.log("Number of conversation records:", userConversations.length);
-
+		if (userConversations) {
 			const conversationData: DMConversation[] = userConversations
 				.map((conv: { conversation: unknown }) => {
 					const conversation = conv.conversation as ConversationWithDetails;
-					if (!conversation) {
-						console.log("Skipping conversation - no conversation data:", conv);
-						return null;
-					}
-
-					console.log("Processing conversation:", {
-						id: conversation.id,
-						participants: conversation.participants,
-						messageCount: conversation.messages?.length || 0,
-					});
+					if (!conversation) return null;
 
 					const otherParticipant = conversation.participants?.find(
 						(p) => p.user?.id !== session.user.id,
 					);
 
-					if (!otherParticipant?.user) {
-						console.log(
-							"Skipping conversation - no other participant found:",
-							conversation.id,
-						);
-						return null;
-					}
+					if (!otherParticipant?.user) return null;
 
 					const messages = conversation.messages;
 					const sortedMessages = Array.isArray(messages)
@@ -341,13 +176,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 							)
 						: [];
 					const lastMessage = sortedMessages[0];
-					if (!lastMessage) {
-						console.log(
-							"Skipping conversation - no messages found:",
-							conversation.id,
-						);
-						return null;
-					}
+					if (!lastMessage) return null;
 
 					return {
 						id: conversation.id,
@@ -361,13 +190,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 				})
 				.filter((conv): conv is DMConversation => conv !== null);
 
-			console.log("Processed conversations:", conversationData);
-			console.log("Number of valid conversations:", conversationData.length);
-			console.log("Setting conversations state with:", conversationData);
 			setConversations(conversationData);
-			console.log("Current conversations state after update:", conversations);
-		} catch (error) {
-			console.error("Unexpected error in fetchConversations:", error);
 		}
 	};
 
@@ -388,7 +211,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 						<button
 							type="button"
 							onClick={() => setIsChannelModalOpen(true)}
-							className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+							className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-[#E7E5DA] dark:hover:bg-gray-800 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
 						>
 							+
 						</button>
@@ -424,7 +247,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 						<button
 							type="button"
 							onClick={() => setIsDMModalOpen(true)}
-							className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+							className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-[#E7E5DA] dark:hover:bg-gray-800 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
 						>
 							+
 						</button>
@@ -505,10 +328,7 @@ export default function Sidebar() {
 							<Menu className="h-5 w-5" />
 						</button>
 					</SheetTrigger>
-					<SheetContent
-						side="left"
-						className="p-0 w-72 bg-[#F2F0E5] dark:bg-gray-900"
-					>
+					<SheetContent side="left" className="p-0 w-72">
 						<SidebarContent onNavigate={() => setIsOpen(false)} />
 					</SheetContent>
 				</Sheet>

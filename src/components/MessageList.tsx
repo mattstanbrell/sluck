@@ -1,16 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { getAuthenticatedSupabaseClient } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
 import { Button } from "@/components/ui/button";
-import { Copy } from "lucide-react";
+import { Copy, Check } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import rehypeRaw from "rehype-raw";
 import UserAvatar from "./UserAvatar";
+import type {
+	ComponentProps,
+	ReactNode,
+	DetailedHTMLProps,
+	HTMLAttributes,
+} from "react";
+import type { Components } from "react-markdown";
 
 type Message = Database["public"]["Tables"]["messages"]["Row"] & {
 	sender: Database["public"]["Tables"]["users"]["Row"];
@@ -20,16 +27,6 @@ interface MessageListProps {
 	channelId?: string;
 	conversationId?: string;
 }
-
-// Convert URLs to clickable links
-const processLinks = (text: string) => {
-	const urlRegex = /(https?:\/\/[^\s]+)/g;
-	return text.replace(
-		urlRegex,
-		(url) =>
-			`<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`,
-	);
-};
 
 // Add CSS to handle theme switching and Gruvbox styling
 const codeThemeStyles = `
@@ -41,6 +38,17 @@ const codeThemeStyles = `
 	}
 	code {
 		font-family: var(--font-geist-mono);
+	}
+	
+	/* Custom link styling */
+	.prose a {
+		color: #59A097 !important;
+		text-decoration-color: #59A097 !important;
+		text-decoration-line: underline !important;
+	}
+	.prose a:hover {
+		text-decoration: underline !important;
+		opacity: 0.8;
 	}
 	
 	.hljs {
@@ -154,7 +162,18 @@ export default function MessageList({
 	const [messages, setMessages] = useState<Message[]>([]);
 	const [memberCount, setMemberCount] = useState(0);
 	const [inviteLink, setInviteLink] = useState<string | null>(null);
+	const [copiedId, setCopiedId] = useState<string | null>(null);
 	const { data: session } = useSession();
+
+	const copyToClipboard = async (text: string, id: string) => {
+		try {
+			await navigator.clipboard.writeText(text);
+			setCopiedId(id);
+			setTimeout(() => setCopiedId(null), 2000);
+		} catch (error) {
+			console.error("Failed to copy:", error);
+		}
+	};
 
 	useEffect(() => {
 		const fetchMessages = async () => {
@@ -303,23 +322,76 @@ export default function MessageList({
 			<style>{codeThemeStyles}</style>
 			<div className="flex-1 p-4 space-y-4">
 				{messages.map((message) => (
-					<div key={message.id} className="flex items-start gap-3">
-						<UserAvatar user={message.sender} className="w-8 h-8" />
-						<div>
+					<div
+						key={message.id}
+						className="flex items-start gap-3 px-2 py-1 rounded-lg"
+					>
+						<UserAvatar user={message.sender} className="w-8 h-8 mt-1" />
+						<div className="min-w-0 flex-1">
 							<div className="flex items-baseline gap-2">
-								<span className="font-medium">
+								<span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
 									{message.sender?.name || "Unknown User"}
 								</span>
-								<span className="text-xs text-gray-500">
+								<span className="text-xs text-gray-400 dark:text-gray-500">
 									{new Date(message.created_at).toLocaleTimeString()}
 								</span>
 							</div>
-							<div className="mt-1 prose dark:prose-invert prose-sm max-w-none">
+							<div className="mt-0.5 prose dark:prose-invert prose-sm max-w-none">
 								<ReactMarkdown
 									remarkPlugins={[remarkGfm]}
 									rehypePlugins={[rehypeHighlight, rehypeRaw]}
+									components={{
+										pre: ({ children, ...props }) => {
+											const preRef = useRef<HTMLPreElement>(null);
+											const id = Math.random().toString(36).substring(7);
+											const isCopied = copiedId === id;
+
+											const handleCopy = () => {
+												if (preRef.current) {
+													const content = (
+														preRef.current.textContent || ""
+													).trim();
+													copyToClipboard(content, id);
+												}
+											};
+
+											return (
+												<div className="relative group">
+													<pre ref={preRef} {...props}>
+														{children}
+													</pre>
+													<Button
+														variant="ghost"
+														size="sm"
+														className="absolute top-2 right-2 bg-[#282828] text-gray-400 hover:bg-gray-400 hover:text-[#282828] transition-colors"
+														onClick={handleCopy}
+													>
+														{isCopied ? (
+															<Check className="h-4 w-4" />
+														) : (
+															<Copy className="h-4 w-4" />
+														)}
+													</Button>
+												</div>
+											);
+										},
+										code: (props: any) => {
+											// Check if it's inside a pre tag (code block)
+											const isInBlock =
+												props.node?.parentNode?.tagName === "pre";
+											if (!isInBlock) {
+												return (
+													<code
+														className="bg-[#F2F0E5] dark:bg-gray-800 px-1.5 py-0.5 rounded-md font-mono text-sm border border-transparent"
+														{...props}
+													/>
+												);
+											}
+											return <code className={props.className} {...props} />;
+										},
+									}}
 								>
-									{processLinks(message.content)}
+									{message.content}
 								</ReactMarkdown>
 							</div>
 						</div>

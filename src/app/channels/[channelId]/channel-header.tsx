@@ -35,9 +35,6 @@ export default function ChannelHeader({ channel }: ChannelHeaderProps) {
 					</Button>
 				</SheetTrigger>
 				<SheetContent side="right" className="p-0 w-80">
-					<SheetHeader className="px-6 py-4 border-b">
-						<SheetTitle>Channel Details</SheetTitle>
-					</SheetHeader>
 					<ChannelMembers channelId={channel.id} />
 				</SheetContent>
 			</Sheet>
