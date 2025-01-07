@@ -78,7 +78,7 @@ export default function DMPage({
 	if (!session || !conversation || !otherUser) return null;
 
 	return (
-		<div className="flex flex-col h-screen">
+		<div className="flex flex-col h-[calc(100vh-3.5rem)] md:h-screen">
 			<div className="border-b p-4 flex items-center space-x-2">
 				{otherUser.avatar_url && (
 					<img
@@ -90,14 +90,11 @@ export default function DMPage({
 				<h1 className="text-lg font-semibold">{otherUser.name}</h1>
 			</div>
 
-			<MessageList
-				conversationId={conversation.id}
-				className="flex-1 overflow-y-auto"
-			/>
-
-			<div className="border-t p-4">
-				<MessageInput conversationId={conversation.id} />
+			<div className="flex-1 overflow-y-auto">
+				<MessageList conversationId={conversation.id} />
 			</div>
+
+			<MessageInput conversationId={conversation.id} />
 		</div>
 	);
 }

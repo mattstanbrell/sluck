@@ -9,14 +9,34 @@ import CreateDMModal from "./CreateDMModal";
 import type { Database } from "@/lib/database.types";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { Menu } from "lucide-react";
+import {
+	Sheet,
+	SheetContent,
+	SheetTrigger,
+	SheetClose,
+} from "@/components/ui/sheet";
 
 type Channel = Database["public"]["Tables"]["channels"]["Row"];
 type ChannelMember = Database["public"]["Tables"]["channel_members"]["Row"] & {
 	channel: Channel;
 };
 type User = Database["public"]["Tables"]["users"]["Row"];
-type Message = Database["public"]["Tables"]["messages"]["Row"];
-type Conversation = Database["public"]["Tables"]["conversations"]["Row"];
+type Message = Database["public"]["Tables"]["messages"]["Row"] & {
+	sender: User;
+};
+
+interface ConversationParticipant {
+	user: User;
+}
+
+interface ConversationWithDetails {
+	id: string;
+	type: string;
+	last_message_at: string;
+	participants: ConversationParticipant[];
+	messages: Message[];
+}
 
 interface DMConversation {
 	id: string;
@@ -25,7 +45,7 @@ interface DMConversation {
 	unreadCount: number;
 }
 
-export default function Sidebar() {
+function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 	const { data: session } = useSession();
 	const [channels, setChannels] = useState<Channel[]>([]);
 	const [conversations, setConversations] = useState<DMConversation[]>([]);
@@ -110,13 +130,9 @@ export default function Sidebar() {
 
 	const fetchConversations = async () => {
 		if (!session?.user?.id) return;
-		console.log("Fetching conversations for user:", session.user.id);
 
 		const client = await getAuthenticatedSupabaseClient();
-
-		// Get all conversations the user is part of
-		console.log("Querying conversation participants...");
-		const { data: userConversations, error } = await client
+		const { data: userConversations } = await client
 			.from("conversation_participants")
 			.select(`
 				conversation:conversations!inner(
@@ -138,44 +154,19 @@ export default function Sidebar() {
 			.eq("conversations.type", "direct")
 			.order("conversation(last_message_at)", { ascending: false });
 
-		if (error) {
-			console.error("Error fetching conversations:", error);
-			return;
-		}
-
-		console.log("Raw conversation data:", userConversations);
-
 		if (userConversations) {
 			const conversationData: DMConversation[] = userConversations
-				.map((conv) => {
-					console.log("Processing conversation:", conv);
-					const conversation = conv.conversation;
-					if (!conversation) {
-						console.log("No conversation data found");
-						return null;
-					}
+				.map((conv: { conversation: unknown }) => {
+					const conversation = conv.conversation as ConversationWithDetails;
+					if (!conversation) return null;
 
-					console.log("Conversation participants:", conversation.participants);
-					if (!Array.isArray(conversation.participants)) {
-						console.log("Participants is not an array");
-						return null;
-					}
-
-					// Find the other participant
-					const otherParticipant = conversation.participants.find(
+					const otherParticipant = conversation.participants?.find(
 						(p) => p.user?.id !== session.user.id,
 					);
-					console.log("Other participant:", otherParticipant);
 
-					if (!otherParticipant?.user) {
-						console.log("No other participant found");
-						return null;
-					}
+					if (!otherParticipant?.user) return null;
 
-					// Get the last message
-					console.log("Messages:", conversation.messages);
 					const messages = conversation.messages;
-					// Sort messages by created_at to ensure we get the latest
 					const sortedMessages = Array.isArray(messages)
 						? [...messages].sort(
 								(a, b) =>
@@ -184,33 +175,20 @@ export default function Sidebar() {
 							)
 						: [];
 					const lastMessage = sortedMessages[0];
-					if (!lastMessage) {
-						console.log("No messages found");
-						return null;
-					}
-
-					console.log("Creating conversation entry with:", {
-						id: conversation.id,
-						otherUser: otherParticipant.user,
-						lastMessage: {
-							...lastMessage,
-							user: lastMessage.sender,
-						},
-					});
+					if (!lastMessage) return null;
 
 					return {
 						id: conversation.id,
 						otherUser: otherParticipant.user,
 						lastMessage: {
 							...lastMessage,
-							user: lastMessage.sender,
+							sender: lastMessage.sender,
 						},
-						unreadCount: 0, // TODO: Implement unread count
+						unreadCount: 0,
 					};
 				})
 				.filter((conv): conv is DMConversation => conv !== null);
 
-			console.log("Final conversation list:", conversationData);
 			setConversations(conversationData);
 		}
 	};
@@ -218,7 +196,7 @@ export default function Sidebar() {
 	if (!session) return null;
 
 	return (
-		<div className="w-64 bg-gray-100 dark:bg-gray-900 p-4 flex flex-col h-screen">
+		<div className="w-full h-full bg-gray-100 dark:bg-gray-900 p-4 flex flex-col">
 			<div className="mb-8">
 				<h1 className="text-xl font-bold">Sluck</h1>
 			</div>
@@ -244,11 +222,12 @@ export default function Sidebar() {
 								<li key={channel.id}>
 									<Link
 										href={`/channels/${channel.id}`}
+										onClick={onNavigate}
 										className={cn(
 											"block px-2 py-1 rounded transition-colors",
 											isActive
 												? "bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-												: "hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300",
+												: "hover:bg-gray-200 dark:hover:bg-gray-800",
 										)}
 									>
 										# {channel.name}
@@ -273,30 +252,39 @@ export default function Sidebar() {
 						</button>
 					</div>
 					<ul className="space-y-1">
-						{conversations.map((conv) => {
-							const isActive = pathname === `/dm/${conv.id}`;
+						{conversations?.map((conversation) => {
+							const isActive = pathname === `/dm/${conversation.id}`;
 							return (
-								<li key={conv.id}>
+								<li key={conversation.id}>
 									<Link
-										href={`/dm/${conv.id}`}
+										href={`/dm/${conversation.id}`}
+										onClick={onNavigate}
 										className={cn(
 											"block px-2 py-1 rounded transition-colors flex items-center space-x-2",
 											isActive
 												? "bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-												: "hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300",
+												: "hover:bg-gray-200 dark:hover:bg-gray-800",
 										)}
 									>
-										{conv.otherUser.avatar_url && (
+										{conversation.otherUser.avatar_url ? (
 											<img
-												src={conv.otherUser.avatar_url}
+												src={conversation.otherUser.avatar_url}
 												alt=""
-												className="w-6 h-6 rounded-full"
+												className="w-6 h-6 rounded-full flex-shrink-0"
 											/>
+										) : (
+											<div className="w-6 h-6 rounded-full bg-gray-300 dark:bg-gray-700 flex-shrink-0 flex items-center justify-center">
+												<span className="text-sm text-gray-600 dark:text-gray-400">
+													{conversation.otherUser.name.charAt(0)}
+												</span>
+											</div>
 										)}
-										<span>{conv.otherUser.name}</span>
-										{conv.unreadCount > 0 && (
+										<span className="truncate">
+											{conversation.otherUser.name}
+										</span>
+										{conversation.unreadCount > 0 && (
 											<span className="ml-auto bg-blue-500 text-white text-xs rounded-full px-2 py-0.5">
-												{conv.unreadCount}
+												{conversation.unreadCount}
 											</span>
 										)}
 									</Link>
@@ -307,38 +295,57 @@ export default function Sidebar() {
 				</div>
 			</div>
 
-			{/* User profile and sign out */}
-			<div className="border-t pt-4 mt-4">
-				<div className="flex items-center justify-between">
-					<div className="flex items-center">
-						{session.user?.image && (
-							<img
-								src={session.user.image}
-								alt=""
-								className="w-8 h-8 rounded-full mr-2"
-							/>
-						)}
-						<span className="text-sm font-medium">{session.user?.name}</span>
-					</div>
-					<button
-						type="button"
-						onClick={() => signOut()}
-						className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-					>
-						Sign out
-					</button>
-				</div>
+			<div className="mt-auto pt-4">
+				<button
+					type="button"
+					onClick={() => signOut()}
+					className="w-full px-2 py-1 text-left text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-800 rounded"
+				>
+					Sign out
+				</button>
 			</div>
 
 			<CreateChannelModal
 				isOpen={isChannelModalOpen}
 				onClose={() => setIsChannelModalOpen(false)}
-				onChannelCreated={fetchChannels}
 			/>
 			<CreateDMModal
 				isOpen={isDMModalOpen}
 				onClose={() => setIsDMModalOpen(false)}
 			/>
 		</div>
+	);
+}
+
+export default function Sidebar() {
+	const { data: session } = useSession();
+	const [isOpen, setIsOpen] = useState(false);
+	if (!session) return null;
+
+	return (
+		<>
+			{/* Mobile Menu Button */}
+			<div className="md:hidden fixed left-0 top-0 h-14 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-40 flex items-center px-4">
+				<Sheet open={isOpen} onOpenChange={setIsOpen}>
+					<SheetTrigger asChild>
+						<button
+							type="button"
+							className="p-2 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-md"
+						>
+							<Menu className="h-5 w-5" />
+						</button>
+					</SheetTrigger>
+					<SheetContent side="left" className="p-0 w-72">
+						<SidebarContent onNavigate={() => setIsOpen(false)} />
+					</SheetContent>
+				</Sheet>
+				<span className="ml-3 text-lg font-semibold">Sluck</span>
+			</div>
+
+			{/* Desktop Sidebar */}
+			<div className="hidden md:block w-64 h-screen">
+				<SidebarContent />
+			</div>
+		</>
 	);
 }

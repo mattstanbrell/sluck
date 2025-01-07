@@ -29,10 +29,12 @@ export default async function ChannelPage({ params }: PageProps) {
 	if (!channel) notFound();
 
 	return (
-		<div className="flex h-screen">
+		<div className="flex h-[calc(100vh-3.5rem)] md:h-screen">
 			<div className="flex-1 flex flex-col">
 				<ChannelHeader channel={channel} />
-				<MessageList channelId={channel.id} />
+				<div className="flex-1 overflow-y-auto">
+					<MessageList channelId={channel.id} />
+				</div>
 				<MessageInput channelId={channel.id} />
 			</div>
 		</div>

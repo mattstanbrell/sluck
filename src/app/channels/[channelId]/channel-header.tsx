@@ -23,7 +23,7 @@ export default function ChannelHeader({ channel }: ChannelHeaderProps) {
 	return (
 		<header className="border-b p-4 flex items-center justify-between">
 			<div>
-				<h1 className="text-xl font-semibold">#{channel.name}</h1>
+				<h1 className="text-xl font-semibold"># {channel.name}</h1>
 				{channel.description && (
 					<p className="text-sm text-gray-500">{channel.description}</p>
 				)}
