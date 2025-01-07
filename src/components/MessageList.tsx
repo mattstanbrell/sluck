@@ -176,17 +176,12 @@ export default function MessageList({
 	// Initial scroll when messages are loaded
 	useEffect(() => {
 		if (messages.length > 0) {
-			// Immediate scroll on first load
-			messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+			// Use requestAnimationFrame to ensure DOM is ready
+			requestAnimationFrame(() => {
+				messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+			});
 		}
 	}, [messages]); // Add messages as dependency
-
-	// Smooth scroll when new messages arrive
-	useEffect(() => {
-		if (messages.length > 0) {
-			scrollToBottom();
-		}
-	}, [messages, scrollToBottom]);
 
 	const copyToClipboard = async (text: string, id: string) => {
 		try {

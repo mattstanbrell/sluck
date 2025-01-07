@@ -354,7 +354,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 				</div>
 			</div>
 
-			<div className="mt-auto flex items-center gap-2">
+			<div className="mt-auto flex items-center gap-3">
 				<UserAvatar
 					user={{
 						avatar_url: session.user.image,
