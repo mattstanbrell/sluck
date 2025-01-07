@@ -168,7 +168,7 @@ export default function ChannelMembers({ channelId }: { channelId: string }) {
 
 			{isAdmin && inviteLink && (
 				<div className="mb-6 space-y-4">
-					<div className="flex items-center gap-2 p-2 bg-[#F2F0E5] dark:bg-gray-800 rounded-md">
+					<div className="flex items-center gap-2 p-2 bg-gray-100 dark:bg-gray-800 rounded-md">
 						<div className="flex-1 truncate text-sm">{inviteLink}</div>
 						<Button
 							variant="ghost"
