@@ -3,11 +3,12 @@
 import { getAuthenticatedSupabaseClient } from "@/lib/supabase";
 import { useSession } from "next-auth/react";
 import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface CreateChannelModalProps {
 	isOpen: boolean;
 	onClose: () => void;
-	onChannelCreated?: () => void;
+	onChannelCreated?: (channelId: string) => void;
 }
 
 export default function CreateChannelModal({
@@ -19,6 +20,7 @@ export default function CreateChannelModal({
 	const [description, setDescription] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
 	const { data: session } = useSession();
+	const router = useRouter();
 
 	if (!isOpen) return null;
 
@@ -57,7 +59,8 @@ export default function CreateChannelModal({
 			setName("");
 			setDescription("");
 			onClose();
-			onChannelCreated?.();
+			onChannelCreated?.(channelData.id);
+			router.push(`/channels/${channelData.id}`);
 		} catch (error) {
 			console.error("Error creating channel:", error);
 			alert("Failed to create channel. Check console for details.");
