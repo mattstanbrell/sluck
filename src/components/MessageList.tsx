@@ -6,6 +6,12 @@ import { getAuthenticatedSupabaseClient } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
 import { Button } from "@/components/ui/button";
 import { Copy } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeHighlight from "rehype-highlight";
+import rehypeRaw from "rehype-raw";
+import "highlight.js/styles/github-dark.css";
+import UserAvatar from "./UserAvatar";
 
 type Message = Database["public"]["Tables"]["messages"]["Row"] & {
 	sender: Database["public"]["Tables"]["users"]["Row"];
@@ -16,7 +22,20 @@ interface MessageListProps {
 	conversationId?: string;
 }
 
-export default function MessageList({ channelId, conversationId }: MessageListProps) {
+// Convert URLs to clickable links
+const processLinks = (text: string) => {
+	const urlRegex = /(https?:\/\/[^\s]+)/g;
+	return text.replace(
+		urlRegex,
+		(url) =>
+			`<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`,
+	);
+};
+
+export default function MessageList({
+	channelId,
+	conversationId,
+}: MessageListProps) {
 	const [messages, setMessages] = useState<Message[]>([]);
 	const [memberCount, setMemberCount] = useState(0);
 	const [inviteLink, setInviteLink] = useState<string | null>(null);
@@ -41,7 +60,10 @@ export default function MessageList({ channelId, conversationId }: MessageListPr
 					)
 				`,
 				)
-				.eq(channelId ? "channel_id" : "conversation_id", channelId || conversationId)
+				.eq(
+					channelId ? "channel_id" : "conversation_id",
+					channelId || conversationId,
+				)
 				.order("created_at", { ascending: true });
 
 			if (data) {
@@ -84,7 +106,7 @@ export default function MessageList({ channelId, conversationId }: MessageListPr
 
 		// Set up realtime subscription
 		const client = getAuthenticatedSupabaseClient();
-		const channel = client.then((supabase) => 
+		const channel = client.then((supabase) =>
 			supabase
 				.channel(`messages-${channelId || conversationId}`)
 				.on(
@@ -120,7 +142,7 @@ export default function MessageList({ channelId, conversationId }: MessageListPr
 						}
 					},
 				)
-				.subscribe()
+				.subscribe(),
 		);
 
 		return () => {
@@ -143,9 +165,12 @@ export default function MessageList({ channelId, conversationId }: MessageListPr
 		return (
 			<div className="flex-1 flex items-center justify-center">
 				<div className="text-center max-w-md mx-auto p-6">
-					<h3 className="text-xl font-semibold mb-2">Welcome to the channel!</h3>
+					<h3 className="text-xl font-semibold mb-2">
+						Welcome to the channel!
+					</h3>
 					<p className="text-gray-600 dark:text-gray-400 mb-6">
-						You're the first one here. Invite your teammates to start the conversation.
+						You're the first one here. Invite your teammates to start the
+						conversation.
 					</p>
 					<div className="flex items-center justify-center gap-2 p-3 bg-gray-100 dark:bg-gray-800 rounded-md">
 						<div className="text-sm truncate max-w-[300px]">{inviteLink}</div>
@@ -162,13 +187,7 @@ export default function MessageList({ channelId, conversationId }: MessageListPr
 		<div className="flex-1 p-4 space-y-4">
 			{messages.map((message) => (
 				<div key={message.id} className="flex items-start gap-3">
-					{message.sender?.avatar_url && (
-						<img
-							src={message.sender.avatar_url}
-							alt=""
-							className="w-8 h-8 rounded-full"
-						/>
-					)}
+					<UserAvatar user={message.sender} className="w-8 h-8" />
 					<div>
 						<div className="flex items-baseline gap-2">
 							<span className="font-medium">
@@ -178,8 +197,13 @@ export default function MessageList({ channelId, conversationId }: MessageListPr
 								{new Date(message.created_at).toLocaleTimeString()}
 							</span>
 						</div>
-						<div className="mt-1 text-gray-700 dark:text-gray-300">
-							{message.content}
+						<div className="mt-1 prose dark:prose-invert prose-sm max-w-none">
+							<ReactMarkdown
+								remarkPlugins={[remarkGfm]}
+								rehypePlugins={[rehypeHighlight, rehypeRaw]}
+							>
+								{processLinks(message.content)}
+							</ReactMarkdown>
 						</div>
 					</div>
 				</div>
