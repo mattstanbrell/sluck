@@ -288,7 +288,13 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 			</div>
 
 			<div className="mt-auto flex items-center gap-2">
-				<UserAvatar user={session.user} className="w-8 h-8" />
+				<UserAvatar
+					user={{
+						avatar_url: session.user.image,
+						name: session.user.name,
+					}}
+					className="w-8 h-8"
+				/>
 				<button
 					type="button"
 					onClick={() => signOut()}

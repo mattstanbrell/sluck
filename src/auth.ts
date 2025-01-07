@@ -72,6 +72,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 				if (userData) {
 					session.user.id = userData.id;
 					session.user.status = userData.status;
+					session.user.image = userData.avatar_url;
 
 					// Use service role client directly
 					const serviceClient = createClient(supabaseUrl, supabaseServiceKey, {
