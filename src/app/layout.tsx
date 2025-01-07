@@ -5,6 +5,7 @@ import Sidebar from "@/components/Sidebar";
 import { auth } from "@/auth";
 import { headers } from "next/headers";
 import AuthProvider from "@/components/AuthProvider";
+import UserPresence from "@/components/UserPresence";
 
 const geistSans = Geist({
 	variable: "--font-geist-sans",
@@ -34,6 +35,7 @@ export default async function RootLayout({
 				className={`${geistSans.variable} ${geistMono.variable} antialiased`}
 			>
 				<AuthProvider session={session}>
+					<UserPresence />
 					<div className="flex h-screen">
 						<Sidebar />
 						<main className="flex-1 overflow-hidden md:pt-0 pt-14">

@@ -1,7 +1,8 @@
 "use client";
 
 import { signOut, useSession } from "next-auth/react";
-import { supabase, getAuthenticatedSupabaseClient } from "@/lib/supabase";
+import { getAuthenticatedSupabaseClient } from "@/lib/supabase";
+import type { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import CreateChannelModal from "./CreateChannelModal";
@@ -44,6 +45,7 @@ interface DMConversation {
 	otherUser: User;
 	lastMessage: Message;
 	unreadCount: number;
+	isOnline: boolean;
 }
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
@@ -58,13 +60,25 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 		let channelSubscription: ReturnType<typeof supabase.channel> | null = null;
 		let conversationSubscription: ReturnType<typeof supabase.channel> | null =
 			null;
+		let userPresenceSubscription: ReturnType<typeof supabase.channel> | null =
+			null;
+		let statusPollInterval: NodeJS.Timeout;
 
 		const setupSubscriptions = async () => {
+			if (!session?.user?.id) return;
+
+			const client = await getAuthenticatedSupabaseClient();
+
 			// Initial fetch
 			await Promise.all([fetchChannels(), fetchConversations()]);
 
+			// Set up polling for user statuses (to detect inactive users)
+			statusPollInterval = setInterval(() => {
+				console.log("Polling for user statuses...");
+				fetchConversations();
+			}, 60000); // Poll every minute
+
 			// Set up real-time subscription for channels
-			const client = await getAuthenticatedSupabaseClient();
 			channelSubscription = client
 				.channel("channels")
 				.on(
@@ -73,9 +87,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 						event: "*",
 						schema: "public",
 						table: "channel_members",
-						filter: session?.user?.id
-							? `user_id=eq.${session.user.id}`
-							: undefined,
+						filter: `user_id=eq.${session.user.id}`,
 					},
 					() => {
 						fetchChannels();
@@ -92,22 +104,48 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 						event: "*",
 						schema: "public",
 						table: "messages",
-						filter: session?.user?.id ? "conversation_id.neq.null" : undefined,
+						filter: "conversation_id.neq.null",
 					},
 					() => {
 						fetchConversations();
 					},
 				)
 				.subscribe();
+
+			// Set up real-time subscription for user presence (to detect active users immediately)
+			userPresenceSubscription = client
+				.channel("user-presence")
+				.on(
+					"postgres_changes",
+					{
+						event: "UPDATE",
+						schema: "public",
+						table: "users",
+					},
+					(payload) => {
+						console.log("Received user presence update:", payload);
+						if (
+							payload.new.id !== session.user.id &&
+							payload.new.last_seen &&
+							(!payload.old.last_seen ||
+								new Date(payload.new.last_seen).getTime() >
+									new Date(payload.old.last_seen).getTime())
+						) {
+							console.log("User became active:", payload.new.id);
+							fetchConversations(); // Refetch to update online status
+						}
+					},
+				)
+				.subscribe();
 		};
 
-		if (session?.user?.id) {
-			setupSubscriptions();
-		}
+		setupSubscriptions().catch(console.error);
 
 		return () => {
-			channelSubscription?.unsubscribe();
-			conversationSubscription?.unsubscribe();
+			clearInterval(statusPollInterval);
+			if (channelSubscription) channelSubscription.unsubscribe();
+			if (conversationSubscription) conversationSubscription.unsubscribe();
+			if (userPresenceSubscription) userPresenceSubscription.unsubscribe();
 		};
 	}, [session?.user?.id]);
 
@@ -141,7 +179,10 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 					type,
 					last_message_at,
 					participants:conversation_participants(
-						user:users(*)
+						user:users(
+							*,
+							last_seen
+						)
 					),
 					messages:messages!messages_conversation_id_fkey(
 						id,
@@ -155,8 +196,10 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 			.eq("conversations.type", "direct")
 			.order("conversation(last_message_at)", { ascending: false });
 
+		console.log("Fetched conversations:", userConversations);
+
 		if (userConversations) {
-			const conversationData: DMConversation[] = userConversations
+			const conversationData = userConversations
 				.map((conv: { conversation: unknown }) => {
 					const conversation = conv.conversation as ConversationWithDetails;
 					if (!conversation) return null;
@@ -178,6 +221,18 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 					const lastMessage = sortedMessages[0];
 					if (!lastMessage) return null;
 
+					const lastSeen = otherParticipant.user.last_seen;
+					const isOnline = lastSeen
+						? new Date().getTime() - new Date(lastSeen).getTime() < 60000 // less than 1 minute
+						: false;
+
+					console.log(
+						`User ${otherParticipant.user.name} online status:`,
+						isOnline,
+						"last seen:",
+						lastSeen,
+					);
+
 					return {
 						id: conversation.id,
 						otherUser: otherParticipant.user,
@@ -186,7 +241,8 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 							sender: lastMessage.sender,
 						},
 						unreadCount: 0,
-					};
+						isOnline,
+					} as DMConversation;
 				})
 				.filter((conv): conv is DMConversation => conv !== null);
 
@@ -267,10 +323,20 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 												: "hover:bg-[#E7E5DA] dark:hover:bg-gray-800",
 										)}
 									>
-										<UserAvatar
-											user={conversation.otherUser}
-											className="w-6 h-6"
-										/>
+										<div className="relative">
+											<UserAvatar
+												user={conversation.otherUser}
+												className="w-5 h-5"
+											/>
+											<div
+												className={cn(
+													"absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-white dark:border-gray-900",
+													conversation.isOnline
+														? "bg-teal-500"
+														: "bg-gray-300 dark:bg-gray-600",
+												)}
+											/>
+										</div>
 										<span className="truncate">
 											{conversation.otherUser.name}
 										</span>
