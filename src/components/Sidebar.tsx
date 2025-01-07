@@ -254,8 +254,9 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
 	return (
 		<div className="w-full h-full bg-[#F2F0E5] dark:bg-gray-900 p-4 flex flex-col">
+			<h1 className="sr-only">Sluck Menu</h1>
 			<div className="mb-8">
-				<h1 className="text-xl font-bold">Sluck</h1>
+				<h2 className="text-xl font-bold">Sluck</h2>
 			</div>
 
 			<div className="flex-1 space-y-4">

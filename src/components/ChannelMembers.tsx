@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react";
 import { Button } from "./ui/button";
 import { Copy, Plus } from "lucide-react";
 import UserAvatar from "./UserAvatar";
+import { DialogTitle } from "./ui/dialog";
 
 type Member = {
 	user_id: string;
@@ -164,6 +165,7 @@ export default function ChannelMembers({ channelId }: { channelId: string }) {
 
 	return (
 		<div className="p-6 h-full overflow-y-auto">
+			<DialogTitle className="sr-only">Channel Info</DialogTitle>
 			{isAdmin && inviteLink && (
 				<div className="mb-8">
 					<h3 className="text-lg font-semibold mb-4">Invite Link</h3>
