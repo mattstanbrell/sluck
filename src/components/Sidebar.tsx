@@ -2,10 +2,15 @@
 
 import { signOut, useSession } from "next-auth/react";
 import { supabase, getAuthenticatedSupabaseClient } from "@/lib/supabase";
-import type { Channel } from "@/types/database";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import CreateChannelModal from "./CreateChannelModal";
+import type { Database } from "@/lib/database.types";
+
+type Channel = Database["public"]["Tables"]["channels"]["Row"];
+type ChannelMember = Database["public"]["Tables"]["channel_members"]["Row"] & {
+	channel: Channel;
+};
 
 export default function Sidebar() {
 	const { data: session } = useSession();
@@ -28,7 +33,10 @@ export default function Sidebar() {
 					{
 						event: "*",
 						schema: "public",
-						table: "channels",
+						table: "channel_members",
+						filter: session?.user?.id
+							? `user_id=eq.${session.user.id}`
+							: undefined,
 					},
 					() => {
 						fetchChannels();
@@ -37,20 +45,32 @@ export default function Sidebar() {
 				.subscribe();
 		};
 
-		setupSubscription();
+		if (session?.user?.id) {
+			setupSubscription();
+		}
 
 		return () => {
 			subscription?.unsubscribe();
 		};
-	}, []);
+	}, [session?.user?.id]);
 
 	const fetchChannels = async () => {
+		if (!session?.user?.id) return;
+
 		const client = await getAuthenticatedSupabaseClient();
 		const { data } = await client
-			.from("channels")
-			.select("*")
-			.order("created_at");
-		if (data) setChannels(data);
+			.from("channel_members")
+			.select("*, channel:channels(*)")
+			.eq("user_id", session.user.id)
+			.order("joined_at");
+
+		if (data) {
+			// Extract the channel data from the joined query and ensure it's not null
+			const channelData = (data as ChannelMember[])
+				.map((item) => item.channel)
+				.filter((channel): channel is Channel => channel !== null);
+			setChannels(channelData);
+		}
 	};
 
 	if (!session) return null;
