@@ -154,7 +154,7 @@ export default function MessageInput({
 				onChange={(e) => setMessage(e.target.value)}
 				onKeyDown={handleKeyDown}
 				placeholder="Type a message... (Markdown supported)"
-				className="w-full p-2 rounded-md border dark:border-gray-700 dark:bg-gray-800 min-h-[80px] resize-none"
+				className="w-full p-2 rounded-md border bg-background hover:border-input focus:border-input dark:border-gray-700 dark:bg-gray-800 min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
 				disabled={isLoading}
 			/>
 		</form>

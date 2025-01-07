@@ -10,7 +10,6 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import rehypeRaw from "rehype-raw";
-import "highlight.js/styles/github-dark.css";
 import UserAvatar from "./UserAvatar";
 
 type Message = Database["public"]["Tables"]["messages"]["Row"] & {
@@ -31,6 +30,122 @@ const processLinks = (text: string) => {
 			`<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`,
 	);
 };
+
+// Add CSS to handle theme switching and Gruvbox styling
+const codeThemeStyles = `
+	pre {
+		background: #282828 !important;
+		border-radius: 0.375rem;
+		padding: 1rem;
+		margin: 1rem 0;
+	}
+	code {
+		font-family: var(--font-geist-mono);
+	}
+	
+	.hljs {
+		display: block;
+		overflow-x: auto;
+		padding: 0.5em;
+		background: #282828;
+	}
+	
+	.hljs,
+	.hljs-subst {
+		color: #ebdbb2;
+	}
+	
+	/* Gruvbox Red */
+	.hljs-deletion,
+	.hljs-formula,
+	.hljs-keyword,
+	.hljs-link,
+	.hljs-selector-tag {
+		color: #fb4934;
+	}
+	
+	/* Gruvbox Blue */
+	.hljs-built_in,
+	.hljs-emphasis,
+	.hljs-name,
+	.hljs-quote,
+	.hljs-strong,
+	.hljs-title,
+	.hljs-variable {
+		color: #83a598;
+	}
+	
+	/* Gruvbox Yellow */
+	.hljs-attr,
+	.hljs-params,
+	.hljs-template-tag,
+	.hljs-type {
+		color: #fabd2f;
+	}
+	
+	/* Gruvbox Purple */
+	.hljs-builtin-name,
+	.hljs-doctag,
+	.hljs-literal,
+	.hljs-number {
+		color: #8f3f71;
+	}
+	
+	/* Gruvbox Orange */
+	.hljs-code,
+	.hljs-meta,
+	.hljs-regexp,
+	.hljs-selector-id,
+	.hljs-template-variable {
+		color: #fe8019;
+	}
+	
+	/* Gruvbox Green */
+	.hljs-addition,
+	.hljs-meta-string,
+	.hljs-section,
+	.hljs-selector-attr,
+	.hljs-selector-class,
+	.hljs-string,
+	.hljs-symbol {
+		color: #b8bb26;
+	}
+	
+	/* Gruvbox Aqua */
+	.hljs-attribute,
+	.hljs-bullet,
+	.hljs-class,
+	.hljs-function,
+	.hljs-function .hljs-keyword,
+	.hljs-meta-keyword,
+	.hljs-selector-pseudo,
+	.hljs-tag {
+		color: #8ec07c;
+	}
+	
+	/* Gruvbox Gray */
+	.hljs-comment {
+		color: #928374;
+	}
+	
+	/* Gruvbox Purple */
+	.hljs-link_label,
+	.hljs-literal,
+	.hljs-number {
+		color: #d3869b;
+	}
+	
+	.hljs-comment,
+	.hljs-emphasis {
+		font-style: italic;
+	}
+	
+	.hljs-section,
+	.hljs-strong,
+	.hljs-tag {
+		font-weight: bold;
+	}
+`;
 
 export default function MessageList({
 	channelId,
@@ -184,30 +299,33 @@ export default function MessageList({
 	}
 
 	return (
-		<div className="flex-1 p-4 space-y-4">
-			{messages.map((message) => (
-				<div key={message.id} className="flex items-start gap-3">
-					<UserAvatar user={message.sender} className="w-8 h-8" />
-					<div>
-						<div className="flex items-baseline gap-2">
-							<span className="font-medium">
-								{message.sender?.name || "Unknown User"}
-							</span>
-							<span className="text-xs text-gray-500">
-								{new Date(message.created_at).toLocaleTimeString()}
-							</span>
-						</div>
-						<div className="mt-1 prose dark:prose-invert prose-sm max-w-none">
-							<ReactMarkdown
-								remarkPlugins={[remarkGfm]}
-								rehypePlugins={[rehypeHighlight, rehypeRaw]}
-							>
-								{processLinks(message.content)}
-							</ReactMarkdown>
+		<>
+			<style>{codeThemeStyles}</style>
+			<div className="flex-1 p-4 space-y-4">
+				{messages.map((message) => (
+					<div key={message.id} className="flex items-start gap-3">
+						<UserAvatar user={message.sender} className="w-8 h-8" />
+						<div>
+							<div className="flex items-baseline gap-2">
+								<span className="font-medium">
+									{message.sender?.name || "Unknown User"}
+								</span>
+								<span className="text-xs text-gray-500">
+									{new Date(message.created_at).toLocaleTimeString()}
+								</span>
+							</div>
+							<div className="mt-1 prose dark:prose-invert prose-sm max-w-none">
+								<ReactMarkdown
+									remarkPlugins={[remarkGfm]}
+									rehypePlugins={[rehypeHighlight, rehypeRaw]}
+								>
+									{processLinks(message.content)}
+								</ReactMarkdown>
+							</div>
 						</div>
 					</div>
-				</div>
-			))}
-		</div>
+				))}
+			</div>
+		</>
 	);
 }
