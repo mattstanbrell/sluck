@@ -13,27 +13,34 @@ export default function Sidebar() {
 	const [isModalOpen, setIsModalOpen] = useState(false);
 
 	useEffect(() => {
-		// Initial fetch
-		fetchChannels();
+		let subscription: ReturnType<typeof supabase.channel> | null = null;
 
-		// Set up real-time subscription for channels
-		const subscription = supabase
-			.channel("channels")
-			.on(
-				"postgres_changes",
-				{
-					event: "*",
-					schema: "public",
-					table: "channels",
-				},
-				() => {
-					fetchChannels();
-				},
-			)
-			.subscribe();
+		const setupSubscription = async () => {
+			// Initial fetch
+			await fetchChannels();
+
+			// Set up real-time subscription for channels
+			const client = await getAuthenticatedSupabaseClient();
+			subscription = client
+				.channel("channels")
+				.on(
+					"postgres_changes",
+					{
+						event: "*",
+						schema: "public",
+						table: "channels",
+					},
+					() => {
+						fetchChannels();
+					},
+				)
+				.subscribe();
+		};
+
+		setupSubscription();
 
 		return () => {
-			subscription.unsubscribe();
+			subscription?.unsubscribe();
 		};
 	}, []);
 
@@ -109,6 +116,7 @@ export default function Sidebar() {
 			<CreateChannelModal
 				isOpen={isModalOpen}
 				onClose={() => setIsModalOpen(false)}
+				onChannelCreated={fetchChannels}
 			/>
 		</div>
 	);

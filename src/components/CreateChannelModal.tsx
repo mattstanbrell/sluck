@@ -1,17 +1,19 @@
 "use client";
 
-import { supabase, getAuthenticatedSupabaseClient } from "@/lib/supabase";
+import { getAuthenticatedSupabaseClient } from "@/lib/supabase";
 import { useSession } from "next-auth/react";
 import { FormEvent, useState } from "react";
 
 interface CreateChannelModalProps {
 	isOpen: boolean;
 	onClose: () => void;
+	onChannelCreated?: () => void;
 }
 
 export default function CreateChannelModal({
 	isOpen,
 	onClose,
+	onChannelCreated,
 }: CreateChannelModalProps) {
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
@@ -55,6 +57,7 @@ export default function CreateChannelModal({
 			setName("");
 			setDescription("");
 			onClose();
+			onChannelCreated?.();
 		} catch (error) {
 			console.error("Error creating channel:", error);
 			alert("Failed to create channel. Check console for details.");
