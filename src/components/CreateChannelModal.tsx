@@ -30,29 +30,29 @@ export default function CreateChannelModal({
 			setIsLoading(true);
 			const client = await getAuthenticatedSupabaseClient();
 
-			console.log("Attempting to create channel with:", {
-				name: name.trim().toLowerCase().replace(/\s+/g, "-"),
-				description: description.trim(),
-				created_by: session.user.id,
-			});
+			// Create the channel
+			const { data: channelData, error: channelError } = await client
+				.from("channels")
+				.insert({
+					name: name.trim().toLowerCase().replace(/\s+/g, "-"),
+					description: description.trim(),
+					created_by: session.user.id,
+				})
+				.select()
+				.single();
 
-			const { data, error } = await client.from("channels").insert({
-				name: name.trim().toLowerCase().replace(/\s+/g, "-"),
-				description: description.trim(),
-				created_by: session.user.id,
-			});
+			if (channelError) throw channelError;
 
-			console.log("Supabase response:", { data, error });
-
-			if (error) {
-				console.error("Detailed error:", {
-					message: error.message,
-					details: error.details,
-					hint: error.hint,
-					code: error.code,
+			// Add the creator as an admin member
+			const { error: memberError } = await client
+				.from("channel_members")
+				.insert({
+					channel_id: channelData.id,
+					user_id: session.user.id,
+					role: "admin",
 				});
-				throw error;
-			}
+
+			if (memberError) throw memberError;
 
 			setName("");
 			setDescription("");

@@ -8,10 +8,22 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 // Client for public operations (with RLS)
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+	auth: {
+		persistSession: true,
+		autoRefreshToken: true,
+	},
+});
+
+let authenticatedClient: ReturnType<typeof createClient> | null = null;
 
 // Function to get an authenticated Supabase client
 export async function getAuthenticatedSupabaseClient() {
+	// Return cached client if it exists
+	if (authenticatedClient) {
+		return authenticatedClient;
+	}
+
 	// Get the current session token from NextAuth
 	const response = await fetch("/api/auth/session");
 	const session = await response.json();
@@ -24,12 +36,14 @@ export async function getAuthenticatedSupabaseClient() {
 	}
 
 	// Create a new Supabase client with the service role token
-	return createClient(supabaseUrl, session.supabaseAccessToken, {
+	authenticatedClient = createClient(supabaseUrl, session.supabaseAccessToken, {
 		auth: {
-			autoRefreshToken: false,
-			persistSession: false,
+			autoRefreshToken: true,
+			persistSession: true,
 		},
 	});
+
+	return authenticatedClient;
 }
 
 // Create a separate admin client file for server-side operations if needed

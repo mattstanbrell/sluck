@@ -22,6 +22,6 @@ export interface User {
 	email: string;
 	name: string;
 	avatar_url: string | null;
-	status: string;
-	last_seen: string;
+	status: string | null;
+	last_seen: string | null;
 }

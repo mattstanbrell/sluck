@@ -1,0 +1,157 @@
+# Slack Clone - Basic MVP Requirements
+
+## 1. Authentication
+- Google sign-in only
+- Protected routes
+- Basic user profile (name, email, avatar)
+
+## 2. Channels
+- Create and join public channels
+- Channel name and optional description
+- List of channel members
+- Basic channel navigation
+
+## 3. Direct Messaging
+- One-on-one messaging
+- Conversation list in sidebar
+- Basic online/offline status
+
+## 4. Real-time Messaging
+- Send and receive messages instantly
+- Basic text messages
+- Message history
+- Edit and delete own messages
+
+## 5. Channel/DM Organization
+- Simple sidebar navigation
+- List of channels
+- List of direct messages
+- Basic unread indicators
+
+## 6. File Sharing
+- Upload and share images
+- Basic image preview
+- Simple file list per channel
+
+## 7. User Presence & Status
+- Online/offline status
+- Custom status message
+- Last seen timestamp
+
+## 8. Thread Support
+- Create threads on messages
+- View threaded conversations
+- Thread notification badges
+
+## 9. Emoji Reactions
+- Add/remove reactions to messages
+- Basic emoji picker
+- Reaction counts
+
+
+# Database Schema
+
+## Users table
+```sql
+create table users (
+  id uuid primary key default uuid_generate_v4(),
+  created_at timestamptz default now(),
+  email text unique not null,
+  name text not null,
+  avatar_url text,
+  status text,
+  last_seen timestamptz
+);
+```
+
+## Channels table
+```sql
+create table channels (
+  id uuid primary key default uuid_generate_v4(),
+  name text not null,
+  description text,
+  created_by uuid references users(id) on delete set null,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  invite_policy text not null check (invite_policy in ('creator_only', 'admins_only', 'members')) default 'creator_only'
+);
+```
+
+## Channel members table
+```sql
+create table channel_members (
+  channel_id uuid references channels(id) on delete cascade,
+  user_id uuid references users(id) on delete cascade,
+  role text not null check (role in ('admin', 'member')) default 'member',
+  joined_at timestamptz default now(),
+  primary key (channel_id, user_id)
+);
+```
+
+## Messages table
+```sql
+create table messages (
+  id uuid primary key default uuid_generate_v4(),
+  channel_id uuid references channels(id) on delete cascade,
+  user_id uuid references users(id) on delete cascade,
+  recipient_id uuid references users(id) on delete cascade, -- For DMs only
+  content text not null,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  -- recipient_id is only used for DMs, channel_id only for channels
+  constraint message_type_check check (
+    (channel_id is null and recipient_id is not null) or
+    (channel_id is not null and recipient_id is null)
+  )
+);
+```
+
+## Channel invites table
+```sql
+create table channel_invites (
+  id uuid primary key default uuid_generate_v4(),
+  channel_id uuid references channels(id) on delete cascade,
+  created_by uuid references users(id) on delete cascade,
+  code text unique not null,
+  created_at timestamptz default now(),
+  expires_at timestamptz not null,
+  is_revoked boolean default false
+);
+
+create index channel_invites_code_idx on channel_invites(code);
+```
+
+## Enable Row Level Security
+```sql
+alter table channels enable row level security;
+alter table messages enable row level security;
+alter table channel_members enable row level security;
+alter table channel_invites enable row level security;
+```
+
+## Enable Realtime
+```sql
+alter publication supabase_realtime add table channels;
+alter publication supabase_realtime add table messages;
+alter publication supabase_realtime add table channel_invites;
+```
+
+
+# Tech Stack
+
+## Core Framework
+- **Next.js 14+** (App Router)
+- **React 19**
+- **TypeScript**
+
+## Authentication & Database
+- **NextAuth.js** (v5 beta) - Google authentication
+- **Supabase** - PostgreSQL database with realtime capabilities
+  - Database
+  - Row Level Security
+  - Realtime subscriptions
+  - Storage (for file uploads)
+
+## UI Components & Styling
+- **Tailwind CSS**
+- **shadcn/ui**
