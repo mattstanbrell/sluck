@@ -3,10 +3,17 @@ import { NextResponse } from "next/server";
 
 export default auth((req) => {
 	const isLoggedIn = !!req.auth;
-	const isAuthPage = req.nextUrl.pathname.startsWith("/api/auth");
+	const isAuthPage = req.nextUrl.pathname === "/signin";
 
 	if (!isLoggedIn && !isAuthPage) {
-		return Response.redirect(new URL("/api/auth/signin", req.url));
+		const callbackUrl = encodeURIComponent(req.nextUrl.pathname);
+		return Response.redirect(
+			new URL(`/signin?callbackUrl=${callbackUrl}`, req.url),
+		);
+	}
+
+	if (isLoggedIn && isAuthPage) {
+		return Response.redirect(new URL("/", req.url));
 	}
 
 	return NextResponse.next();

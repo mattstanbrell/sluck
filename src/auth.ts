@@ -12,6 +12,9 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
 	providers: [Google],
+	pages: {
+		signIn: "/signin",
+	},
 	callbacks: {
 		async signIn({ user, account, profile }) {
 			if (!user.email) return false;
@@ -82,6 +85,25 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 				}
 			}
 			return session;
+		},
+		async redirect({ url, baseUrl }) {
+			// Handle relative URLs
+			if (url.startsWith("/")) {
+				return `${baseUrl}${url}`;
+			}
+
+			// Allow same-origin URLs
+			try {
+				const urlOrigin = new URL(url).origin;
+				if (urlOrigin === baseUrl) {
+					return url;
+				}
+			} catch {
+				// If URL parsing fails, return to base URL
+				return baseUrl;
+			}
+
+			return baseUrl;
 		},
 	},
 });

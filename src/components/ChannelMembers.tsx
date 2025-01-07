@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { supabase, getAuthenticatedSupabaseClient } from "@/lib/supabase";
 import type { User } from "@/types/database";
+import { useSession } from "next-auth/react";
+import { Button } from "./ui/button";
+import { Copy, Plus } from "lucide-react";
 
 type Member = {
 	user_id: string;
@@ -46,7 +49,10 @@ function transformSupabaseResponse(data: QueryResponse): Member {
 }
 
 export default function ChannelMembers({ channelId }: { channelId: string }) {
+	const { data: session } = useSession();
 	const [members, setMembers] = useState<Member[]>([]);
+	const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
+	const [inviteLink, setInviteLink] = useState<string | null>(null);
 
 	useEffect(() => {
 		let subscription: ReturnType<typeof supabase.channel> | null = null;
@@ -204,9 +210,87 @@ export default function ChannelMembers({ channelId }: { channelId: string }) {
 
 	console.log("Current members state:", members);
 
+	const isAdmin = members.some(
+		(member) => member.user_id === session?.user?.id && member.role === "admin",
+	);
+
+	const generateInviteLink = async () => {
+		if (!session?.user?.id || isGeneratingInvite) return;
+
+		try {
+			setIsGeneratingInvite(true);
+			const client = await getAuthenticatedSupabaseClient();
+
+			// Generate a random code
+			const code = Math.random().toString(36).substring(2, 15);
+
+			// Set expiry to 7 days from now
+			const expiresAt = new Date();
+			expiresAt.setDate(expiresAt.getDate() + 7);
+
+			// Create the invite
+			const { error } = await client.from("channel_invites").insert({
+				channel_id: channelId,
+				created_by: session.user.id,
+				code,
+				expires_at: expiresAt.toISOString(),
+			});
+
+			if (error) throw error;
+
+			// Set the invite link
+			const inviteUrl = `${window.location.origin}/invite/${code}`;
+			setInviteLink(inviteUrl);
+		} catch (error) {
+			console.error("Error generating invite:", error);
+			alert("Failed to generate invite link. Please try again.");
+		} finally {
+			setIsGeneratingInvite(false);
+		}
+	};
+
+	const copyInviteLink = async () => {
+		if (!inviteLink) return;
+		try {
+			await navigator.clipboard.writeText(inviteLink);
+			alert("Invite link copied to clipboard!");
+		} catch (error) {
+			console.error("Error copying to clipboard:", error);
+			alert("Failed to copy invite link. Please try again.");
+		}
+	};
+
 	return (
 		<div className="p-6 h-full overflow-y-auto">
 			<h3 className="text-lg font-semibold mb-6">Channel Members</h3>
+
+			{isAdmin && (
+				<div className="mb-6 space-y-4">
+					<Button
+						onClick={generateInviteLink}
+						disabled={isGeneratingInvite}
+						className="w-full"
+					>
+						<Plus className="h-4 w-4 mr-2" />
+						{isGeneratingInvite ? "Generating..." : "Generate Invite Link"}
+					</Button>
+
+					{inviteLink && (
+						<div className="flex items-center gap-2 p-2 bg-gray-100 dark:bg-gray-800 rounded-md">
+							<div className="flex-1 truncate text-sm">{inviteLink}</div>
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={copyInviteLink}
+								className="shrink-0"
+							>
+								<Copy className="h-4 w-4" />
+							</Button>
+						</div>
+					)}
+				</div>
+			)}
+
 			<ul className="space-y-4">
 				{members.map((member) => (
 					<li key={member.user_id} className="flex items-center gap-3">
