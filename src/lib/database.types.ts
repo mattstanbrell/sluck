@@ -9,55 +9,6 @@ export type Json =
 export interface Database {
 	public: {
 		Tables: {
-			channel_invites: {
-				Row: {
-					id: string;
-					channel_id: string;
-					created_by: string;
-					code: string;
-					created_at: string;
-					expires_at: string;
-					is_revoked: boolean;
-				};
-				Insert: {
-					id?: string;
-					channel_id: string;
-					created_by: string;
-					code: string;
-					created_at?: string;
-					expires_at: string;
-					is_revoked?: boolean;
-				};
-				Update: {
-					id?: string;
-					channel_id?: string;
-					created_by?: string;
-					code?: string;
-					created_at?: string;
-					expires_at?: string;
-					is_revoked?: boolean;
-				};
-			};
-			channel_members: {
-				Row: {
-					channel_id: string;
-					user_id: string;
-					role: string;
-					joined_at: string;
-				};
-				Insert: {
-					channel_id: string;
-					user_id: string;
-					role?: string;
-					joined_at?: string;
-				};
-				Update: {
-					channel_id?: string;
-					user_id?: string;
-					role?: string;
-					joined_at?: string;
-				};
-			};
 			channels: {
 				Row: {
 					id: string;
@@ -85,6 +36,26 @@ export interface Database {
 					created_at?: string;
 					updated_at?: string;
 					invite_policy?: string;
+				};
+			};
+			channel_members: {
+				Row: {
+					channel_id: string;
+					user_id: string;
+					role: string;
+					joined_at: string;
+				};
+				Insert: {
+					channel_id: string;
+					user_id: string;
+					role?: string;
+					joined_at?: string;
+				};
+				Update: {
+					channel_id?: string;
+					user_id?: string;
+					role?: string;
+					joined_at?: string;
 				};
 			};
 			messages: {
@@ -143,6 +114,93 @@ export interface Database {
 					avatar_url?: string | null;
 					status?: string | null;
 					last_seen?: string | null;
+				};
+			};
+			workspaces: {
+				Row: {
+					id: string;
+					name: string;
+					slug: string;
+					description: string | null;
+					created_by: string | null;
+					created_at: string;
+					updated_at: string;
+					invite_code: string | null;
+					invite_expires_at: string | null;
+					invite_is_revoked: boolean;
+				};
+				Insert: {
+					id?: string;
+					name: string;
+					slug: string;
+					description?: string | null;
+					created_by?: string | null;
+					created_at?: string;
+					updated_at?: string;
+					invite_code?: string | null;
+					invite_expires_at?: string | null;
+					invite_is_revoked?: boolean;
+				};
+				Update: {
+					id?: string;
+					name?: string;
+					slug?: string;
+					description?: string | null;
+					created_by?: string | null;
+					created_at?: string;
+					updated_at?: string;
+					invite_code?: string | null;
+					invite_expires_at?: string | null;
+					invite_is_revoked?: boolean;
+				};
+			};
+			workspace_members: {
+				Row: {
+					workspace_id: string;
+					user_id: string;
+					role: string;
+					joined_at: string;
+				};
+				Insert: {
+					workspace_id: string;
+					user_id: string;
+					role?: string;
+					joined_at?: string;
+				};
+				Update: {
+					workspace_id?: string;
+					user_id?: string;
+					role?: string;
+					joined_at?: string;
+				};
+			};
+			conversations: {
+				Row: {
+					id: string;
+					channel_id: string;
+					created_by: string;
+					code: string;
+					created_at: string;
+					expires_at: string;
+					is_revoked: boolean;
+				};
+				Insert: {
+					id?: string;
+					channel_id: string;
+					created_by: string;
+					code: string;
+					created_at?: string;
+					expires_at: string;
+					is_revoked?: boolean;
+				};
+				Update: {
+					id?: string;
+					channel_id?: string;
+					created_by?: string;
+					code?: string;
+					created_at?: string;
+					expires_at?: string;
+					is_revoked?: boolean;
 				};
 			};
 		};

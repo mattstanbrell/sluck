@@ -1,16 +1,22 @@
 "use client";
 
+import { useSession } from "next-auth/react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { getAuthenticatedSupabaseClient } from "@/lib/supabase";
 import {
 	Dialog,
 	DialogContent,
+	DialogDescription,
 	DialogHeader,
 	DialogTitle,
 	DialogFooter,
 } from "@/components/ui/dialog";
-import { getAuthenticatedSupabaseClient } from "@/lib/supabase";
-import { useSession } from "next-auth/react";
-import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import type { FormEvent } from "react";
 
 interface CreateChannelModalProps {
 	isOpen: boolean;
@@ -37,6 +43,19 @@ export default function CreateChannelModal({
 			setIsLoading(true);
 			const client = await getAuthenticatedSupabaseClient();
 
+			// First, get the current workspace
+			const { data: workspaceMember } = await client
+				.from("workspace_members")
+				.select("workspace_id")
+				.eq("user_id", session.user.id)
+				.order("joined_at")
+				.limit(1)
+				.single();
+
+			if (!workspaceMember?.workspace_id) {
+				throw new Error("No workspace found");
+			}
+
 			// Create the channel
 			const { data: channelData, error: channelError } = await client
 				.from("channels")
@@ -44,6 +63,7 @@ export default function CreateChannelModal({
 					name: name.trim().toLowerCase().replace(/\s+/g, "-"),
 					description: description.trim(),
 					created_by: session.user.id,
+					workspace_id: workspaceMember.workspace_id,
 				})
 				.select()
 				.single();

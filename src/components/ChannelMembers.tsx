@@ -53,7 +53,6 @@ function transformSupabaseResponse(data: QueryResponse): Member {
 export default function ChannelMembers({ channelId }: { channelId: string }) {
 	const { data: session } = useSession();
 	const [members, setMembers] = useState<Member[]>([]);
-	const [inviteLink, setInviteLink] = useState<string | null>(null);
 
 	useEffect(() => {
 		const fetchData = async () => {
@@ -82,30 +81,6 @@ export default function ChannelMembers({ channelId }: { channelId: string }) {
 				const rawData = data as unknown as QueryResponse[];
 				const transformedData = rawData.map(transformSupabaseResponse);
 				setMembers(transformedData);
-			}
-
-			// Check if user is admin
-			const isUserAdmin = data?.some(
-				(member) =>
-					member.user_id === session.user.id && member.role === "admin",
-			);
-
-			if (isUserAdmin) {
-				// Generate invite link if admin
-				const code = Math.random().toString(36).substring(2, 15);
-				const expiresAt = new Date();
-				expiresAt.setDate(expiresAt.getDate() + 7);
-
-				const { error } = await client.from("channel_invites").insert({
-					channel_id: channelId,
-					created_by: session.user.id,
-					code,
-					expires_at: expiresAt.toISOString(),
-				});
-
-				if (!error) {
-					setInviteLink(`${window.location.origin}/invite/${code}`);
-				}
 			}
 		};
 
@@ -148,60 +123,25 @@ export default function ChannelMembers({ channelId }: { channelId: string }) {
 		};
 	}, [channelId, session?.user?.id]);
 
-	const copyInviteLink = async () => {
-		if (!inviteLink) return;
-		try {
-			await navigator.clipboard.writeText(inviteLink);
-			alert("Invite link copied to clipboard!");
-		} catch (error) {
-			console.error("Error copying to clipboard:", error);
-			alert("Failed to copy invite link. Please try again.");
-		}
+	const handleInvite = async () => {
+		// This function should be removed
 	};
 
-	const isAdmin = members.some(
-		(member) => member.user_id === session?.user?.id && member.role === "admin",
-	);
-
 	return (
-		<div className="p-6 h-full overflow-y-auto">
-			<DialogTitle className="sr-only">Channel Info</DialogTitle>
-			<div className="mt-8">
-				{isAdmin && inviteLink && (
-					<div className="mb-8">
-						<h3 className="text-lg font-semibold mb-4">Invite Link</h3>
-						<div className="flex items-center gap-2 p-2 bg-[#F2F0E5] dark:bg-gray-800 rounded-md">
-							<div className="flex-1 truncate text-sm">{inviteLink}</div>
-							<Button
-								variant="ghost"
-								size="sm"
-								onClick={copyInviteLink}
-								className="shrink-0"
-							>
-								<Copy className="h-4 w-4" />
-							</Button>
-						</div>
-					</div>
-				)}
-
-				<div>
-					<h3 className="text-lg font-semibold mb-6">Channel Members</h3>
-					<ul className="space-y-4">
-						{members.map((member) => (
-							<li key={member.user_id} className="flex items-center gap-3">
-								<UserAvatar user={member.user} className="w-9 h-9" />
-								<div>
-									<div className="font-medium">
-										{member.user?.name || "Unknown User"}
-									</div>
-									<div className="text-xs text-gray-500 capitalize">
-										{member.role}
-									</div>
-								</div>
-							</li>
-						))}
-					</ul>
-				</div>
+		<div className="p-4 border-l border-[#E0DED2] w-64 flex flex-col">
+			<h2 className="text-lg font-semibold mb-4">Members</h2>
+			<div className="flex-1 overflow-y-auto">
+				<ul className="space-y-2">
+					{members?.map((member) => (
+						<li key={member.user_id} className="flex items-center gap-2">
+							<UserAvatar user={member.user} className="w-6 h-6" />
+							<span className="text-sm">{member.user.name}</span>
+							{member.role === "admin" && (
+								<span className="text-xs text-gray-500">(Admin)</span>
+							)}
+						</li>
+					))}
+				</ul>
 			</div>
 		</div>
 	);

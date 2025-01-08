@@ -1,55 +1,91 @@
 # Slack Clone - Basic MVP Requirements
 
-## 1. Authentication
+## 1. Workspaces
+- Create and join workspaces
+- Workspace name and optional description
+- Member roles (owner, admin, member)
+- Workspace switching
+- Basic workspace settings
+
+## 2. Authentication
 - Google sign-in only
 - Protected routes
 - Basic user profile (name, email, avatar)
 
-## 2. Channels
-- Create and join public channels
+## 3. Channels
+- Create and join public channels within a workspace
 - Channel name and optional description
 - List of channel members
 - Basic channel navigation
 
-## 3. Direct Messaging
-- One-on-one messaging
+## 4. Direct Messaging
+- One-on-one messaging within a workspace
 - Conversation list in sidebar
 - Basic online/offline status
 
-## 4. Real-time Messaging
+## 5. Real-time Messaging
 - Send and receive messages instantly
 - Basic text messages
 - Message history
 - Edit and delete own messages
 
-## 5. Channel/DM Organization
+## 6. Channel/DM Organization
 - Simple sidebar navigation
 - List of channels
 - List of direct messages
 - Basic unread indicators
 
-## 6. File Sharing
+## 7. File Sharing
 - Upload and share images
 - Basic image preview
 - Simple file list per channel
 
-## 7. User Presence & Status
+## 8. User Presence & Status
 - Online/offline status
 - Custom status message
 - Last seen timestamp
 
-## 8. Thread Support
+## 9. Thread Support
 - Create threads on messages
 - View threaded conversations
 - Thread notification badges
 
-## 9. Emoji Reactions
+## 10. Emoji Reactions
 - Add/remove reactions to messages
 - Basic emoji picker
 - Reaction counts
 
 
 # Database Schema
+
+## Workspaces table
+```sql
+create table workspaces (
+  id uuid primary key default uuid_generate_v4(),
+  name text not null,
+  slug text unique not null,
+  description text,
+  created_by uuid references users(id) on delete set null,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  invite_code text unique,
+  invite_expires_at timestamptz,
+  invite_is_revoked boolean default false
+);
+
+create index workspaces_invite_code_idx on workspaces(invite_code);
+```
+
+## Workspace members table
+```sql
+create table workspace_members (
+  workspace_id uuid references workspaces(id) on delete cascade,
+  user_id uuid references users(id) on delete cascade,
+  role text not null check (role in ('owner', 'admin', 'member')) default 'member',
+  joined_at timestamptz default now(),
+  primary key (workspace_id, user_id)
+);
+```
 
 ## Users table
 ```sql
@@ -68,12 +104,12 @@ create table users (
 ```sql
 create table channels (
   id uuid primary key default uuid_generate_v4(),
+  workspace_id uuid references workspaces(id) on delete cascade not null,
   name text not null,
   description text,
   created_by uuid references users(id) on delete set null,
   created_at timestamptz default now(),
   updated_at timestamptz default now(),
-  invite_policy text not null check (invite_policy in ('creator_only', 'admins_only', 'members')) default 'creator_only'
 );
 ```
 
@@ -92,6 +128,7 @@ create table channel_members (
 ```sql
 create table conversations (
   id uuid primary key default uuid_generate_v4(),
+  workspace_id uuid references workspaces(id) on delete cascade not null,
   created_at timestamptz default now(),
   updated_at timestamptz default now(),
   last_message_at timestamptz,
@@ -145,6 +182,8 @@ create index channel_invites_code_idx on channel_invites(code);
 
 ## Enable Row Level Security
 ```sql
+alter table workspaces enable row level security;
+alter table workspace_members enable row level security;
 alter table channels enable row level security;
 alter table messages enable row level security;
 alter table channel_members enable row level security;
@@ -155,6 +194,8 @@ alter table conversation_participants enable row level security;
 
 ## Enable Realtime
 ```sql
+alter publication supabase_realtime add table workspaces;
+alter publication supabase_realtime add table workspace_members;
 alter publication supabase_realtime add table channels;
 alter publication supabase_realtime add table messages;
 alter publication supabase_realtime add table channel_invites;

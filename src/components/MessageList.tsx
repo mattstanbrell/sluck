@@ -1,422 +1,141 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
-import { getAuthenticatedSupabaseClient } from "@/lib/supabase";
-import type { Database } from "@/lib/database.types";
-import { Button } from "@/components/ui/button";
-import { Copy, Check } from "lucide-react";
+import { useRef, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeHighlight from "rehype-highlight";
-import rehypeRaw from "rehype-raw";
+import { getAuthenticatedSupabaseClient } from "@/lib/supabase";
 import UserAvatar from "./UserAvatar";
-import type {
-	ComponentProps,
-	ReactNode,
-	DetailedHTMLProps,
-	HTMLAttributes,
-} from "react";
-import type { Components } from "react-markdown";
-import type { CodeComponent } from "react-markdown/lib/ast-to-react";
+import type { Database } from "@/lib/database.types";
 
 type Message = Database["public"]["Tables"]["messages"]["Row"] & {
 	sender: Database["public"]["Tables"]["users"]["Row"];
 };
 
-interface MessageListProps {
-	channelId?: string;
-	conversationId?: string;
-}
-
-// Add CSS to handle theme switching and Gruvbox styling
-const codeThemeStyles = `
-	pre {
-		background: #282828 !important;
-		border-radius: 0.375rem;
-		padding: 1rem;
-		margin: 1rem 0;
-	}
-	code {
-		font-family: var(--font-geist-mono);
-	}
-	
-	/* Custom link styling */
-	.prose a {
-		color: #59A097 !important;
-		text-decoration-color: #59A097 !important;
-		text-decoration-line: underline !important;
-	}
-	.prose a:hover {
-		text-decoration: underline !important;
-		opacity: 0.8;
-	}
-	
-	.hljs {
-		display: block;
-		overflow-x: auto;
-		padding: 0.5em;
-		background: #282828;
-	}
-	
-	.hljs,
-	.hljs-subst {
-		color: #ebdbb2;
-	}
-	
-	/* Gruvbox Red */
-	.hljs-deletion,
-	.hljs-formula,
-	.hljs-keyword,
-	.hljs-link,
-	.hljs-selector-tag {
-		color: #fb4934;
-	}
-	
-	/* Gruvbox Blue */
-	.hljs-built_in,
-	.hljs-emphasis,
-	.hljs-name,
-	.hljs-quote,
-	.hljs-strong,
-	.hljs-title,
-	.hljs-variable {
-		color: #83a598;
-	}
-	
-	/* Gruvbox Yellow */
-	.hljs-attr,
-	.hljs-params,
-	.hljs-template-tag,
-	.hljs-type {
-		color: #fabd2f;
-	}
-	
-	/* Gruvbox Purple */
-	.hljs-builtin-name,
-	.hljs-doctag,
-	.hljs-literal,
-	.hljs-number {
-		color: #8f3f71;
-	}
-	
-	/* Gruvbox Orange */
-	.hljs-code,
-	.hljs-meta,
-	.hljs-regexp,
-	.hljs-selector-id,
-	.hljs-template-variable {
-		color: #fe8019;
-	}
-	
-	/* Gruvbox Green */
-	.hljs-addition,
-	.hljs-meta-string,
-	.hljs-section,
-	.hljs-selector-attr,
-	.hljs-selector-class,
-	.hljs-string,
-	.hljs-symbol {
-		color: #b8bb26;
-	}
-	
-	/* Gruvbox Aqua */
-	.hljs-attribute,
-	.hljs-bullet,
-	.hljs-class,
-	.hljs-function,
-	.hljs-function .hljs-keyword,
-	.hljs-meta-keyword,
-	.hljs-selector-pseudo,
-	.hljs-tag {
-		color: #8ec07c;
-	}
-	
-	/* Gruvbox Gray */
-	.hljs-comment {
-		color: #928374;
-	}
-	
-	/* Gruvbox Purple */
-	.hljs-link_label,
-	.hljs-literal,
-	.hljs-number {
-		color: #d3869b;
-	}
-	
-	.hljs-comment,
-	.hljs-emphasis {
-		font-style: italic;
-	}
-	
-	.hljs-section,
-	.hljs-strong,
-	.hljs-tag {
-		font-weight: bold;
-	}
-`;
-
 export default function MessageList({
 	channelId,
 	conversationId,
-}: MessageListProps) {
+}: {
+	channelId?: string;
+	conversationId?: string;
+}) {
 	const [messages, setMessages] = useState<Message[]>([]);
 	const [memberCount, setMemberCount] = useState(0);
-	const [inviteLink, setInviteLink] = useState<string | null>(null);
-	const [copiedId, setCopiedId] = useState<string | null>(null);
 	const { data: session } = useSession();
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 
-	const scrollToBottom = useCallback(() => {
-		if (messagesEndRef.current) {
-			messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-		}
-	}, []);
-
-	// Initial scroll when messages are loaded
 	useEffect(() => {
-		if (messages.length > 0) {
-			// Use requestAnimationFrame to ensure DOM is ready
-			requestAnimationFrame(() => {
-				messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-			});
-		}
-	}, [messages]); // Add messages as dependency
+		let isSubscribed = true;
 
-	const copyToClipboard = async (text: string, id: string) => {
-		try {
-			await navigator.clipboard.writeText(text);
-			setCopiedId(id);
-			setTimeout(() => setCopiedId(null), 2000);
-		} catch (error) {
-			console.error("Failed to copy:", error);
-		}
-	};
-
-	useEffect(() => {
-		const fetchMessages = async () => {
+		const setupMessaging = async () => {
+			if (!session?.user?.id) return;
 			if (!channelId && !conversationId) return;
+
 			const client = await getAuthenticatedSupabaseClient();
 
-			// Get messages
-			const { data } = await client
-				.from("messages")
-				.select(
-					`
-					*,
-					sender:user_id(
-						id,
-						name,
-						email,
-						avatar_url
-					)
-				`,
-				)
-				.eq(
-					channelId ? "channel_id" : "conversation_id",
-					channelId || conversationId,
-				)
-				.order("created_at", { ascending: true });
+			const fetchMessages = async () => {
+				if (channelId) {
+					const { data } = await client
+						.from("messages")
+						.select("*, sender:users(*)")
+						.eq("channel_id", channelId)
+						.order("created_at", { ascending: true });
 
-			if (data) {
-				setMessages(data as Message[]);
-			}
+					if (data && isSubscribed) {
+						setMessages(data);
+					}
 
-			// If it's a channel, get member count
-			if (channelId) {
-				const { count } = await client
-					.from("channel_members")
-					.select("*", { count: "exact", head: true })
-					.eq("channel_id", channelId);
-				setMemberCount(count || 0);
+					// Get member count
+					const { count } = await client
+						.from("channel_members")
+						.select("*", { count: "exact", head: true })
+						.eq("channel_id", channelId);
+					if (isSubscribed) {
+						setMemberCount(count || 0);
+					}
+				} else if (conversationId) {
+					const { data } = await client
+						.from("messages")
+						.select("*, sender:users(*)")
+						.eq("conversation_id", conversationId)
+						.order("created_at", { ascending: true });
 
-				// If there's only one member, generate an invite link
-				if (count === 1 && session?.user?.id) {
-					// Generate a random code
-					const code = Math.random().toString(36).substring(2, 15);
-
-					// Set expiry to 7 days from now
-					const expiresAt = new Date();
-					expiresAt.setDate(expiresAt.getDate() + 7);
-
-					// Create the invite
-					const { error } = await client.from("channel_invites").insert({
-						channel_id: channelId,
-						created_by: session.user.id,
-						code,
-						expires_at: expiresAt.toISOString(),
-					});
-
-					if (!error) {
-						setInviteLink(`${window.location.origin}/invite/${code}`);
+					if (data && isSubscribed) {
+						setMessages(data);
 					}
 				}
-			}
-		};
+			};
 
-		fetchMessages();
+			await fetchMessages();
 
-		// Set up realtime subscription
-		const client = getAuthenticatedSupabaseClient();
-		const channel = client.then((supabase) =>
-			supabase
-				.channel(`messages-${channelId || conversationId}`)
+			// Set up real-time subscription
+			const channel = client
+				.channel("messages")
 				.on(
 					"postgres_changes",
 					{
-						event: "INSERT",
+						event: "*",
 						schema: "public",
 						table: "messages",
 						filter: channelId
 							? `channel_id=eq.${channelId}`
 							: `conversation_id=eq.${conversationId}`,
 					},
-					async (payload) => {
-						const client = await getAuthenticatedSupabaseClient();
-						const { data } = await client
-							.from("messages")
-							.select(
-								`
-								*,
-								sender:user_id(
-									id,
-									name,
-									email,
-									avatar_url
-								)
-							`,
-							)
-							.eq("id", payload.new.id)
-							.single();
-
-						if (data) {
-							setMessages((current) => [...current, data as Message]);
-						}
+					() => {
+						fetchMessages();
 					},
 				)
-				.subscribe(),
-		);
+				.subscribe();
 
+			return () => {
+				isSubscribed = false;
+				channel.unsubscribe();
+			};
+		};
+
+		const cleanup = setupMessaging();
 		return () => {
-			channel.then((subscription) => subscription.unsubscribe());
+			cleanup.then((unsubscribe) => unsubscribe?.());
 		};
 	}, [channelId, conversationId, session?.user?.id]);
 
-	const copyInviteLink = async () => {
-		if (!inviteLink) return;
-		try {
-			await navigator.clipboard.writeText(inviteLink);
-			alert("Invite link copied to clipboard!");
-		} catch (error) {
-			console.error("Error copying to clipboard:", error);
-			alert("Failed to copy invite link. Please try again.");
-		}
-	};
-
 	if (messages.length === 0 && channelId && memberCount === 1) {
 		return (
-			<div className="flex-1 flex items-center justify-center">
-				<div className="text-center max-w-md mx-auto p-6">
-					<h3 className="text-xl font-semibold mb-2">
+			<div className="flex-1 flex items-center justify-center p-4">
+				<div className="text-center">
+					<h2 className="text-lg font-semibold mb-2">
 						Welcome to the channel!
-					</h3>
-					<p className="text-gray-600 dark:text-gray-400 mb-6">
-						You're the first one here. Invite your teammates to start the
-						conversation.
+					</h2>
+					<p className="text-gray-600 dark:text-gray-400 mb-4">
+						You're the first one here. Invite others to join the conversation.
 					</p>
-					<div className="flex items-center justify-center gap-2 p-3 bg-[#F2F0E5] dark:bg-gray-800 rounded-md">
-						<div className="text-sm truncate max-w-[300px]">{inviteLink}</div>
-						<Button variant="ghost" size="sm" onClick={copyInviteLink}>
-							<Copy className="h-4 w-4" />
-						</Button>
-					</div>
 				</div>
 			</div>
 		);
 	}
 
 	return (
-		<>
-			<style>{codeThemeStyles}</style>
-			<div className="flex-1 p-4 space-y-4">
-				{messages.map((message) => (
-					<div
-						key={message.id}
-						className="flex items-start gap-3 px-2 py-1 rounded-lg"
-					>
-						<UserAvatar user={message.sender} className="w-8 h-8 mt-1" />
-						<div className="min-w-0 flex-1">
+		<div className="flex-1 overflow-y-auto p-4">
+			{messages.map((message) => (
+				<div key={message.id} className="mb-4">
+					<div className="flex items-start gap-2">
+						<UserAvatar user={message.sender} className="w-8 h-8 mt-0.5" />
+						<div>
 							<div className="flex items-baseline gap-2">
-								<span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+								<span className="font-medium">
 									{message.sender?.name || "Unknown User"}
 								</span>
-								<span className="text-xs text-gray-400 dark:text-gray-500">
+								<span className="text-xs text-gray-500">
 									{new Date(message.created_at).toLocaleTimeString()}
 								</span>
 							</div>
-							<div className="mt-0.5 prose dark:prose-invert prose-sm max-w-none">
-								<ReactMarkdown
-									remarkPlugins={[remarkGfm]}
-									rehypePlugins={[rehypeHighlight, rehypeRaw]}
-									components={{
-										pre: ({ children, ...props }) => {
-											const preRef = useRef<HTMLPreElement>(null);
-											const id = Math.random().toString(36).substring(7);
-											const isCopied = copiedId === id;
-
-											const handleCopy = () => {
-												if (preRef.current) {
-													const content = (
-														preRef.current.textContent || ""
-													).trim();
-													copyToClipboard(content, id);
-												}
-											};
-
-											return (
-												<div className="relative group">
-													<pre ref={preRef} {...props}>
-														{children}
-													</pre>
-													<Button
-														variant="ghost"
-														size="sm"
-														className="absolute top-2 right-2 bg-[#282828] text-gray-400 hover:bg-gray-400 hover:text-[#282828] transition-colors"
-														onClick={handleCopy}
-													>
-														{isCopied ? (
-															<Check className="h-4 w-4" />
-														) : (
-															<Copy className="h-4 w-4" />
-														)}
-													</Button>
-												</div>
-											);
-										},
-										code: (props: any) => {
-											// Check if it's inside a pre tag (code block)
-											const isInBlock =
-												props.node?.parentNode?.tagName === "pre";
-											if (!isInBlock) {
-												return (
-													<code
-														className="bg-[#F2F0E5] dark:bg-gray-800 px-1.5 py-0.5 rounded-md font-mono text-sm border border-transparent"
-														{...props}
-													/>
-												);
-											}
-											return <code className={props.className} {...props} />;
-										},
-									}}
-								>
-									{message.content}
-								</ReactMarkdown>
+							<div className="prose dark:prose-invert max-w-none">
+								<ReactMarkdown>{message.content}</ReactMarkdown>
 							</div>
 						</div>
 					</div>
-				))}
-				<div ref={messagesEndRef} />
-			</div>
-		</>
+				</div>
+			))}
+			<div ref={messagesEndRef} />
+		</div>
 	);
 }
