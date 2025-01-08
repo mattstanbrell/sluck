@@ -92,17 +92,28 @@ body {
 }
 
 /* Inline code styling */
-.prose code:not(pre code) {
-	background: rgba(0, 0, 0, 0.05);
-	border-radius: 4px;
-	padding: 0.2rem 0.4rem;
-	font-size: 0.875em;
-	font-family: var(--font-geist-mono);
-	color: currentColor;
+.prose p code,
+.prose li code,
+.prose h1 code,
+.prose h2 code,
+.prose h3 code,
+.prose h4 code {
+	background: rgba(0, 0, 0, 0.05) !important;
+	border-radius: 4px !important;
+	padding: 0.2rem 0.4rem !important;
+	font-size: 0.875em !important;
+	font-family: var(--font-geist-mono) !important;
+	color: currentColor !important;
+	border: none !important;
 }
 
-.dark .prose code:not(pre code) {
-	background: rgba(255, 255, 255, 0.1);
+.dark .prose p code,
+.dark .prose li code,
+.dark .prose h1 code,
+.dark .prose h2 code,
+.dark .prose h3 code,
+.dark .prose h4 code {
+	background: rgba(255, 255, 255, 0.1) !important;
 }
 
 /* Gruvbox Syntax Highlighting */

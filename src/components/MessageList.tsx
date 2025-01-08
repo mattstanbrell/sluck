@@ -24,6 +24,16 @@ export default function MessageList({
 	const [memberCount, setMemberCount] = useState(0);
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 
+	// Add scrollToBottom function
+	const scrollToBottom = useCallback(() => {
+		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+	}, []);
+
+	// Scroll to bottom when messages change
+	useEffect(() => {
+		scrollToBottom();
+	}, [messages, scrollToBottom]);
+
 	// Initialize highlight.js
 	useEffect(() => {
 		hljs.configure({
