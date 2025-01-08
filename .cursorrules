@@ -155,6 +155,8 @@ create table messages (
   channel_id uuid references channels(id) on delete cascade,
   user_id uuid references users(id) on delete cascade,
   recipient_id uuid references users(id) on delete cascade,
+  parent_id uuid references messages(id) on delete cascade,
+  thread_participant boolean default false,
   content text not null,
   created_at timestamptz default now(),
   updated_at timestamptz default now(),
@@ -167,6 +169,7 @@ create table messages (
 
 create index messages_user_id_idx on messages(user_id);
 create index messages_recipient_id_idx on messages(recipient_id);
+create index messages_parent_id_idx on messages(parent_id);
 ```
 
 ## Enable Row Level Security

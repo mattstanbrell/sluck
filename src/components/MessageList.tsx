@@ -2,11 +2,13 @@
 
 import { useSession } from "next-auth/react";
 import { useRef, useEffect, useState, useCallback } from "react";
-import ReactMarkdown from "react-markdown";
-import hljs from "highlight.js";
 import { getAuthenticatedSupabaseClient } from "@/lib/supabase";
 import UserAvatar from "./UserAvatar";
+import MessageContent from "./MessageContent";
 import type { Database } from "@/lib/database.types";
+import { Button } from "./ui/button";
+import { MessageSquare } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 type Message = Database["public"]["Tables"]["messages"]["Row"] & {
 	sender: Database["public"]["Tables"]["users"]["Row"];
@@ -15,10 +17,13 @@ type Message = Database["public"]["Tables"]["messages"]["Row"] & {
 export default function MessageList({
 	channelId,
 	conversationId,
+	parentId,
 }: {
 	channelId?: string;
 	conversationId?: string;
+	parentId?: string;
 }) {
+	const router = useRouter();
 	const { data: session } = useSession();
 	const [messages, setMessages] = useState<Message[]>([]);
 	const [memberCount, setMemberCount] = useState(0);
@@ -34,36 +39,6 @@ export default function MessageList({
 		scrollToBottom();
 	}, [messages, scrollToBottom]);
 
-	// Initialize highlight.js
-	useEffect(() => {
-		hljs.configure({
-			languages: [
-				"javascript",
-				"typescript",
-				"python",
-				"bash",
-				"sql",
-				"json",
-				"html",
-				"css",
-			],
-		});
-	}, []);
-
-	const highlightCode = useCallback((code: string, language: string) => {
-		try {
-			return hljs.highlight(code, {
-				language: language || "plaintext",
-				ignoreIllegals: true,
-			}).value;
-		} catch {
-			return hljs.highlight(code, {
-				language: "plaintext",
-				ignoreIllegals: true,
-			}).value;
-		}
-	}, []);
-
 	useEffect(() => {
 		let isSubscribed = true;
 
@@ -75,11 +50,21 @@ export default function MessageList({
 
 			const fetchMessages = async () => {
 				if (channelId) {
-					const { data } = await client
+					const query = client
 						.from("messages")
 						.select("*, sender:users!messages_user_id_fkey(*)")
 						.eq("channel_id", channelId)
 						.order("created_at", { ascending: true });
+
+					// If in thread view, only show replies
+					if (parentId) {
+						query.eq("parent_id", parentId);
+					} else {
+						// In main channel view, only show parent messages
+						query.is("parent_id", null);
+					}
+
+					const { data } = await query;
 
 					if (data && isSubscribed) {
 						setMessages(data);
@@ -137,7 +122,7 @@ export default function MessageList({
 		return () => {
 			cleanup.then((unsubscribe) => unsubscribe?.());
 		};
-	}, [channelId, conversationId, session?.user?.id]);
+	}, [channelId, conversationId, session?.user?.id, parentId]);
 
 	if (messages.length === 0 && channelId && memberCount === 1) {
 		return (
@@ -157,10 +142,10 @@ export default function MessageList({
 	return (
 		<div className="flex-1 overflow-y-auto p-4">
 			{messages.map((message) => (
-				<div key={message.id} className="mb-4">
+				<div key={message.id} className="mb-4 group relative">
 					<div className="flex items-start gap-2">
 						<UserAvatar user={message.sender} className="w-8 h-8 mt-0.5" />
-						<div>
+						<div className="flex-1">
 							<div className="flex items-baseline gap-2">
 								<span className="font-medium">
 									{message.sender?.name || "Unknown User"}
@@ -169,41 +154,20 @@ export default function MessageList({
 									{new Date(message.created_at).toLocaleTimeString()}
 								</span>
 							</div>
-							<div className="prose dark:prose-invert max-w-none">
-								<ReactMarkdown
-									components={{
-										code(props) {
-											const { children = "", className = "" } = props;
-											const content = String(children).replace(/\n$/, "");
-
-											// Check if this is a code block (has language class or contains newlines)
-											const isCodeBlock =
-												className?.includes("language-") ||
-												content.includes("\n");
-
-											if (!isCodeBlock) {
-												return <code>{content}</code>;
-											}
-
-											const language =
-												/language-(\w+)/.exec(className)?.[1] || "";
-											const highlighted = highlightCode(content, language);
-
-											return (
-												<pre>
-													<code
-														className={`hljs ${language ? `language-${language}` : ""}`}
-														dangerouslySetInnerHTML={{ __html: highlighted }}
-													/>
-												</pre>
-											);
-										},
-									}}
-								>
-									{message.content}
-								</ReactMarkdown>
-							</div>
+							<MessageContent content={message.content} />
 						</div>
+						{channelId && !message.parent_id && (
+							<Button
+								variant="ghost"
+								size="sm"
+								className="opacity-0 group-hover:opacity-100 transition-opacity"
+								onClick={() =>
+									router.push(`/channels/${channelId}/threads/${message.id}`)
+								}
+							>
+								<MessageSquare className="h-4 w-4" />
+							</Button>
+						)}
 					</div>
 				</div>
 			))}

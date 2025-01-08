@@ -9,11 +9,13 @@ import { Bold, Italic, List, Code, Link2, Terminal } from "lucide-react";
 interface MessageInputProps {
 	channelId?: string | null;
 	conversationId?: string | null;
+	parentId?: string | null;
 }
 
 export default function MessageInput({
 	channelId,
 	conversationId,
+	parentId,
 }: MessageInputProps) {
 	const { data: session } = useSession();
 	const [message, setMessage] = useState("");
@@ -128,6 +130,8 @@ export default function MessageInput({
 				channel_id: channelId,
 				conversation_id: conversationId,
 				user_id: session.user.id,
+				parent_id: parentId,
+				thread_participant: parentId ? true : undefined,
 			});
 
 			// Update the conversation's last_message_at

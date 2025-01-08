@@ -64,6 +64,8 @@ export interface Database {
 					channel_id: string | null;
 					user_id: string;
 					recipient_id: string | null;
+					parent_id: string | null;
+					thread_participant: boolean;
 					content: string;
 					created_at: string;
 					updated_at: string;
@@ -73,6 +75,8 @@ export interface Database {
 					channel_id?: string | null;
 					user_id: string;
 					recipient_id?: string | null;
+					parent_id?: string | null;
+					thread_participant?: boolean;
 					content: string;
 					created_at?: string;
 					updated_at?: string;
@@ -82,6 +86,8 @@ export interface Database {
 					channel_id?: string | null;
 					user_id?: string;
 					recipient_id?: string | null;
+					parent_id?: string | null;
+					thread_participant?: boolean;
 					content?: string;
 					created_at?: string;
 					updated_at?: string;
