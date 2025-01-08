@@ -154,6 +154,7 @@ create table messages (
   conversation_id uuid references conversations(id) on delete cascade,
   channel_id uuid references channels(id) on delete cascade,
   user_id uuid references users(id) on delete cascade,
+  recipient_id uuid references users(id) on delete cascade,
   content text not null,
   created_at timestamptz default now(),
   updated_at timestamptz default now(),
@@ -163,21 +164,9 @@ create table messages (
     (conversation_id is not null and channel_id is null)
   )
 );
-```
 
-## Channel invites table
-```sql
-create table channel_invites (
-  id uuid primary key default uuid_generate_v4(),
-  channel_id uuid references channels(id) on delete cascade,
-  created_by uuid references users(id) on delete cascade,
-  code text unique not null,
-  created_at timestamptz default now(),
-  expires_at timestamptz not null,
-  is_revoked boolean default false
-);
-
-create index channel_invites_code_idx on channel_invites(code);
+create index messages_user_id_idx on messages(user_id);
+create index messages_recipient_id_idx on messages(recipient_id);
 ```
 
 ## Enable Row Level Security

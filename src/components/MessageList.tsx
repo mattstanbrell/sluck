@@ -36,7 +36,7 @@ export default function MessageList({
 				if (channelId) {
 					const { data } = await client
 						.from("messages")
-						.select("*, sender:users(*)")
+						.select("*, sender:users!messages_user_id_fkey(*)")
 						.eq("channel_id", channelId)
 						.order("created_at", { ascending: true });
 
@@ -55,7 +55,7 @@ export default function MessageList({
 				} else if (conversationId) {
 					const { data } = await client
 						.from("messages")
-						.select("*, sender:users(*)")
+						.select("*, sender:users!messages_user_id_fkey(*)")
 						.eq("conversation_id", conversationId)
 						.order("created_at", { ascending: true });
 
