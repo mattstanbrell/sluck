@@ -1,8 +1,9 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
+import hljs from "highlight.js";
 import { getAuthenticatedSupabaseClient } from "@/lib/supabase";
 import UserAvatar from "./UserAvatar";
 import type { Database } from "@/lib/database.types";
@@ -18,10 +19,40 @@ export default function MessageList({
 	channelId?: string;
 	conversationId?: string;
 }) {
+	const { data: session } = useSession();
 	const [messages, setMessages] = useState<Message[]>([]);
 	const [memberCount, setMemberCount] = useState(0);
-	const { data: session } = useSession();
 	const messagesEndRef = useRef<HTMLDivElement>(null);
+
+	// Initialize highlight.js
+	useEffect(() => {
+		hljs.configure({
+			languages: [
+				"javascript",
+				"typescript",
+				"python",
+				"bash",
+				"sql",
+				"json",
+				"html",
+				"css",
+			],
+		});
+	}, []);
+
+	const highlightCode = useCallback((code: string, language: string) => {
+		try {
+			return hljs.highlight(code, {
+				language: language || "plaintext",
+				ignoreIllegals: true,
+			}).value;
+		} catch {
+			return hljs.highlight(code, {
+				language: "plaintext",
+				ignoreIllegals: true,
+			}).value;
+		}
+	}, []);
 
 	useEffect(() => {
 		let isSubscribed = true;
@@ -129,7 +160,34 @@ export default function MessageList({
 								</span>
 							</div>
 							<div className="prose dark:prose-invert max-w-none">
-								<ReactMarkdown>{message.content}</ReactMarkdown>
+								<ReactMarkdown
+									components={{
+										code(props) {
+											const { children = "", className = "" } = props;
+											const isInline = !props.node?.position?.start.line;
+											const language =
+												/language-(\w+)/.exec(className)?.[1] || "";
+											const content = String(children).replace(/\n$/, "");
+
+											if (isInline) {
+												return <code>{content}</code>;
+											}
+
+											const highlighted = highlightCode(content, language);
+
+											return (
+												<pre>
+													<code
+														className={`hljs ${language ? `language-${language}` : ""}`}
+														dangerouslySetInnerHTML={{ __html: highlighted }}
+													/>
+												</pre>
+											);
+										},
+									}}
+								>
+									{message.content}
+								</ReactMarkdown>
 							</div>
 						</div>
 					</div>
