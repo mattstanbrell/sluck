@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase, getAuthenticatedSupabaseClient } from "@/lib/supabase";
-import type { User } from "@/types/database";
+import type { User, Channel } from "@/types/database";
 import { useSession } from "next-auth/react";
 import { Button } from "./ui/button";
 import { Copy, Plus } from "lucide-react";
@@ -50,7 +50,10 @@ function transformSupabaseResponse(data: QueryResponse): Member {
 	};
 }
 
-export default function ChannelMembers({ channelId }: { channelId: string }) {
+export default function ChannelMembers({
+	channelId,
+	channel,
+}: { channelId: string; channel: Channel }) {
 	const { data: session } = useSession();
 	const [members, setMembers] = useState<Member[]>([]);
 
@@ -129,19 +132,27 @@ export default function ChannelMembers({ channelId }: { channelId: string }) {
 
 	return (
 		<div className="p-4 border-l border-[#E0DED2] w-64 flex flex-col">
-			<h2 className="text-lg font-semibold mb-4">Members</h2>
-			<div className="flex-1 overflow-y-auto">
-				<ul className="space-y-2">
-					{members?.map((member) => (
-						<li key={member.user_id} className="flex items-center gap-2">
-							<UserAvatar user={member.user} className="w-6 h-6" />
-							<span className="text-sm">{member.user.name}</span>
-							{member.role === "admin" && (
-								<span className="text-xs text-gray-500">(Admin)</span>
-							)}
-						</li>
-					))}
-				</ul>
+			<div className="mb-8">
+				<h2 className="text-xl font-semibold mb-2"># {channel.name}</h2>
+				{channel.description && (
+					<p className="text-sm text-gray-500">{channel.description}</p>
+				)}
+			</div>
+			<div>
+				<h3 className="text-sm font-semibold text-gray-600 mb-4">Members</h3>
+				<div className="flex-1 overflow-y-auto">
+					<ul className="space-y-2">
+						{members?.map((member) => (
+							<li key={member.user_id} className="flex items-center gap-2">
+								<UserAvatar user={member.user} className="w-6 h-6" />
+								<span className="text-sm">{member.user.name}</span>
+								{member.role === "admin" && (
+									<span className="text-xs text-gray-500">(Admin)</span>
+								)}
+							</li>
+						))}
+					</ul>
+				</div>
 			</div>
 		</div>
 	);
