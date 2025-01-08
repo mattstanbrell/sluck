@@ -91,12 +91,18 @@ body {
 	display: block;
 }
 
-code:not(pre code) {
-	background: rgba(40, 40, 40, 0.2);
-	padding: 0.2rem 0.4rem;
+/* Inline code styling */
+.prose code:not(pre code) {
+	background: rgba(0, 0, 0, 0.05);
 	border-radius: 4px;
+	padding: 0.2rem 0.4rem;
 	font-size: 0.875em;
-	border: none !important;
+	font-family: var(--font-geist-mono);
+	color: currentColor;
+}
+
+.dark .prose code:not(pre code) {
+	background: rgba(255, 255, 255, 0.1);
 }
 
 /* Gruvbox Syntax Highlighting */

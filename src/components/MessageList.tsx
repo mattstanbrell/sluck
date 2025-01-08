@@ -164,15 +164,19 @@ export default function MessageList({
 									components={{
 										code(props) {
 											const { children = "", className = "" } = props;
-											const isInline = !props.node?.position?.start.line;
-											const language =
-												/language-(\w+)/.exec(className)?.[1] || "";
 											const content = String(children).replace(/\n$/, "");
 
-											if (isInline) {
+											// Check if this is a code block (has language class or contains newlines)
+											const isCodeBlock =
+												className?.includes("language-") ||
+												content.includes("\n");
+
+											if (!isCodeBlock) {
 												return <code>{content}</code>;
 											}
 
+											const language =
+												/language-(\w+)/.exec(className)?.[1] || "";
 											const highlighted = highlightCode(content, language);
 
 											return (
