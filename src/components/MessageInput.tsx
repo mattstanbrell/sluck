@@ -27,6 +27,10 @@ export default function MessageInput({
 	const startYRef = useRef(0);
 
 	useEffect(() => {
+		textareaRef.current?.focus();
+	}, []);
+
+	useEffect(() => {
 		const handleMouseMove = (e: MouseEvent) => {
 			if (!isResizingRef.current || !containerRef.current) return;
 
@@ -121,6 +125,7 @@ export default function MessageInput({
 		if (!message.trim() || !session?.user?.id || isLoading) return;
 
 		try {
+			textareaRef.current?.focus();
 			setIsLoading(true);
 			const client = await getAuthenticatedSupabaseClient();
 
@@ -149,6 +154,7 @@ export default function MessageInput({
 			console.error("Error sending message:", error);
 		} finally {
 			setIsLoading(false);
+			textareaRef.current?.focus();
 		}
 	};
 
@@ -234,7 +240,6 @@ export default function MessageInput({
 						onKeyDown={handleKeyDown}
 						placeholder="Type a message... (Markdown supported)"
 						className="w-full p-2 rounded-md border border-transparent bg-[#FFFCF0] focus:border-[#1B1A19] dark:border-gray-700 dark:bg-gray-800 resize-none flex-1 focus:outline-none"
-						disabled={isLoading}
 						style={{ height: "144px" }}
 					/>
 				</div>

@@ -531,7 +531,7 @@ function SidebarContent({
 					<button
 						type="button"
 						onClick={() => signOut()}
-						className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+						className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 ml-auto"
 					>
 						Sign Out
 					</button>
