@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import MessageList from "@/components/MessageList";
 import MessageInput from "@/components/MessageInput";
 import MessageContent from "@/components/MessageContent";
+import MessageTimestamp from "@/components/MessageTimestamp";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import UserAvatar from "@/components/UserAvatar";
@@ -53,14 +54,12 @@ export default async function ThreadPage({ params }: PageProps) {
 					<div className="border-b border-b-[#E0DED2] p-4">
 						<div className="flex items-start gap-2">
 							<UserAvatar user={parentMessage.sender} className="w-10 h-10" />
-							<div>
-								<div className="flex items-baseline gap-2">
+							<div className="flex-1">
+								<div className="flex items-baseline gap-2 mb-1">
 									<span className="font-medium">
 										{parentMessage.sender.name}
 									</span>
-									<span className="text-xs text-gray-500">
-										{new Date(parentMessage.created_at).toLocaleTimeString()}
-									</span>
+									<MessageTimestamp timestamp={parentMessage.created_at} />
 								</div>
 								<MessageContent content={parentMessage.content} />
 							</div>
